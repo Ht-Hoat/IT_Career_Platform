@@ -1,0 +1,76 @@
+@page "/users/pending"
+@attribute [Authorize(Roles = Roles.Admin)]
+@inject IUserService Users
+
+<div class="page-head">
+    <div>
+        <a class="btn ghost" href="/users" style="margin-bottom: 8px; display: inline-block;">← Quay lại danh sách tài khoản</a>
+        <h1 class="page-title">Duyệt tài khoản HR / Nhà tuyển dụng</h1>
+    </div>
+</div>
+
+<p class="sub">
+    Danh sách tài khoản Nhà tuyển dụng (HR/Mentor) đăng ký mới đang chờ Quản trị viên duyệt.
+    Sau khi được duyệt, HR có thể đăng nhập và đăng tin tuyển dụng.
+</p>
+
+@if (!string.IsNullOrEmpty(Err)) { <div class="alert-err">@Err</div> }
+@if (!string.IsNullOrEmpty(Msg)) { <div class="alert-ok">@Msg</div> }
+
+@if (pendingUsers.Count == 0)
+{
+    <div class="panel">
+        <div class="sub">Không có tài khoản HR nào đang chờ duyệt.</div>
+    </div>
+}
+else
+{
+    <table class="tbl">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Họ tên</th>
+                <th>Email</th>
+                <th>Công ty</th>
+                <th>Ngày đăng ký</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in pendingUsers)
+            {
+                <tr>
+                    <td>@u.Id</td>
+                    <td><b>@u.FullName</b></td>
+                    <td>@u.Email</td>
+                    <td>@(u.Company?.Name ?? "—")</td>
+                    <td>@Ui.DateTimeText(u.CreatedAt)</td>
+                    <td>
+                        <div class="row-actions">
+                            <form method="post" action="@($"/users/{u.Id}/approve")" class="inline">
+                                <AntiforgeryField />
+                                <button class="btn-sm" style="background:#16a34a;color:#fff;" type="submit">Duyệt</button>
+                            </form>
+                            <form method="post" action="@($"/users/{u.Id}/reject")" class="inline" onsubmit="return confirm('Bạn chắc chắn muốn từ chối tài khoản HR này?');">
+                                <AntiforgeryField />
+                                <button class="btn-sm danger" type="submit">Từ chối</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "err")] public string? Err { get; set; }
+    [SupplyParameterFromQuery(Name = "msg")] public string? Msg { get; set; }
+
+    private List<User> pendingUsers = new();
+
+    protected override void OnInitialized()
+    {
+        pendingUsers = Users.GetPending();
+    }
+}

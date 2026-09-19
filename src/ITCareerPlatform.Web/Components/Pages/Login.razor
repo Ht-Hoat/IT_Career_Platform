@@ -3,34 +3,49 @@
 @attribute [AllowAnonymous]
 @inject IWebHostEnvironment Env
 
-<div class="login-wrap">
-    <div class="login-card">
-        <div class="brand-lg">IT Career<span>PLATFORM</span></div>
-        <h1>Đăng nhập hệ thống</h1>
-        @if (Error) { <div class="alert-err">Sai email hoặc mật khẩu, hoặc tài khoản đã bị khóa.</div> }
-        @if (Registered == "1") { <div class="alert-ok">Đăng ký thành công! Vui lòng đăng nhập.</div> }
-        @if (PwChanged == "1") { <div class="alert-ok">Đã đổi mật khẩu. Mọi phiên đăng nhập cũ đã bị đăng xuất — vui lòng đăng nhập lại bằng mật khẩu mới.</div> }
-        <form method="post" action="/account/login" data-vi-validate>
-            <AntiforgeryField />
-            <label>Email</label>
-            <input name="email" type="email" value="@Email" placeholder="admin@itcp.vn" required />
-            <label>Mật khẩu</label>
-            <input name="password" type="password" placeholder="••••••" required />
-            <button class="btn-primary full" type="submit">Đăng nhập</button>
-        </form>
-        @* Gợi ý tài khoản demo là THÔNG TIN ĐĂNG NHẬP CÒN DÙNG ĐƯỢC, và dữ liệu mẫu
-           chỉ được nạp ở môi trường phát triển. In nó ra cho khách vãng lai ở môi trường
-           thật là trao sẵn tài khoản Admin. *@
-        @if (Env.IsDevelopment())
-        {
+<div class="login-split-container">
+    <div class="login-split-banner">
+        <img class="login-split-img" src="https://www.vietnamworks.com/hrinsider/wp-content/uploads/2022/10/nghe-it-4.jpg" alt="IT Career Platform Banner" />
+        <div class="login-split-overlay"></div>
+        <div class="login-split-text">
+            <span class="login-split-tag">ATS Recruitment System</span>
+            <h2>Khởi đầu sự nghiệp công nghệ vững chắc</h2>
+            <p>Nền tảng kết nối ứng viên tài năng IT với hàng trăm cơ hội việc làm công nghệ hấp dẫn, đánh giá năng lực & CV bằng AI thông minh.</p>
+        </div>
+    </div>
+    <div class="login-split-form-wrap">
+        <div class="login-card">
+            <div class="brand-lg">IT Career<span>PLATFORM</span></div>
+            <h1>Đăng nhập hệ thống</h1>
+            @if (Error) { <div class="alert-err">Sai email hoặc mật khẩu, hoặc tài khoản đã bị khóa.</div> }
+            @if (Registered == "1") { <div class="alert-ok">Đăng ký thành công! Vui lòng đăng nhập.</div> }
+            @if (PwChanged == "1") { <div class="alert-ok">Đã đổi mật khẩu. Mọi phiên đăng nhập cũ đã bị đăng xuất — vui lòng đăng nhập lại bằng mật khẩu mới.</div> }
+            @if (HrPending == "1") { <div class="alert-ok">Tài khoản HR đang chờ Admin duyệt, bạn sẽ đăng nhập được sau khi được duyệt.</div> }
+            <form method="post" action="/account/login" data-vi-validate>
+                <AntiforgeryField />
+                <label>Email</label>
+                <input name="email" type="email" value="@Email" placeholder="admin@itcp.vn" required />
+                <label>Mật khẩu</label>
+                <input name="password" type="password" placeholder="••••••" required />
+                <button class="btn-primary full" type="submit">Đăng nhập</button>
+            </form>
+            @* Gợi ý tài khoản demo là THÔNG TIN ĐĂNG NHẬP CÒN DÙNG ĐƯỢC, và dữ liệu mẫu
+               chỉ được nạp ở môi trường phát triển. In nó ra cho khách vãng lai ở môi trường
+               thật là trao sẵn tài khoản Admin. *@
+            @if (Env.IsDevelopment())
+            {
+                <div class="hint">
+                    <b>Tài khoản demo (mật khẩu: 123456):</b><br />
+                    Admin: admin@itcp.vn<br />
+                    Mentor / HR IT: mentor@itcp.vn<br />
+                    Sinh viên IT: lan@itcp.vn
+                </div>
+            }
             <div class="hint">
-                <b>Tài khoản demo (mật khẩu: 123456):</b><br />
-                Admin: admin@itcp.vn<br />
-                Mentor / HR IT: mentor@itcp.vn<br />
-                Sinh viên IT: lan@itcp.vn
+                <div>Chưa có tài khoản? <a href="/register">Đăng ký Sinh viên IT</a></div>
+                <div style="margin-top:6px">Bạn là nhà tuyển dụng? <a href="/register-hr">Đăng ký HR / Mentor</a></div>
             </div>
-        }
-        <div class="hint">Chưa có tài khoản? <a href="/register">Đăng ký Sinh viên IT</a></div>
+        </div>
     </div>
 </div>
 
@@ -38,6 +53,7 @@
     [SupplyParameterFromQuery(Name = "error")] public string? Error0 { get; set; }
     [SupplyParameterFromQuery(Name = "registered")] public string? Registered { get; set; }
     [SupplyParameterFromQuery(Name = "pwchanged")] public string? PwChanged { get; set; }
+    [SupplyParameterFromQuery(Name = "hrpending")] public string? HrPending { get; set; }
     [SupplyParameterFromQuery(Name = "email")] public string? Email { get; set; }
     private bool Error => Error0 == "1";
 }

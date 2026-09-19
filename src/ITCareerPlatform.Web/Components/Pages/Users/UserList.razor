@@ -8,33 +8,12 @@
     <h1 class="page-title">Quản lý tài khoản</h1>
     <a class="btn-primary" href="/users/new">+ Tạo tài khoản</a>
 </div>
+
 @if (!string.IsNullOrEmpty(Err)) { <div class="alert-err">@Err</div> }
-@if (!string.IsNullOrEmpty(Msg)) { <div class="alert-ok">@Msg</div> }
-@if (!string.IsNullOrEmpty(TempPw))
+@if (pendingCount > 0)
 {
-    <div class="alert-ok" style="border-left: 4px solid #16a34a; background: #f0fdf4; padding: 14px; margin-bottom: 16px; border-radius: 4px;">
-        <h3 style="margin: 0 0 6px 0; color: #166534; font-size: 16px;">🔑 Đặt lại mật khẩu thành công!</h3>
-        <p style="margin: 0; font-size: 15px;">
-            Mật khẩu tạm thời cho tài khoản: <code style="font-size: 18px; font-weight: bold; background: #dcfce7; padding: 2px 10px; border-radius: 4px; color: #15803d; letter-spacing: 1px;">@TempPw</code>
-        </p>
-        <p class="sub" style="margin: 8px 0 0 0; color: #166534;">
-            ⚠️ <b>Lưu ý quan trọng:</b> Hãy sao chép và gửi trực tiếp mật khẩu này cho người dùng. Người dùng sẽ bị buộc phải đổi mật khẩu mới ngay khi đăng nhập.
-        </p>
-        @* P1-3: nói rõ VÌ SAO mật khẩu lại hiện ra đây — nếu không, người vận hành tưởng
-           đây là cách làm bình thường và không bao giờ đi cấu hình SMTP. *@
-        <p class="sub" style="margin: 6px 0 0 0;">
-            @(MailFailed == "1"
-                ? "Không gửi được email (xem log máy chủ), nên mật khẩu tạm hiện ở đây thay thế."
-                : "Hệ thống chưa cấu hình SMTP nên chưa gửi được email. Cấu hình Smtp:Host và Smtp:From để mật khẩu tạm đi thẳng vào hộp thư người dùng.")
-        </p>
-    </div>
-}
-else if (TempPwFlag == "1")
-{
-    @* Cookie đã được đọc (tải lại trang) hoặc đã hết hạn — mật khẩu chỉ hiện đúng một lần. *@
-    <div class="alert-err">
-        Mật khẩu tạm chỉ hiện một lần và đã hết hiệu lực hiển thị. Nếu chưa kịp ghi lại, hãy
-        bấm "Đặt lại mật khẩu" thêm một lần nữa.
+    <div class="info-banner" style="margin-bottom:16px;">
+        ⏳ Có <b>@pendingCount</b> tài khoản HR đang chờ duyệt. <a href="/users/pending"><b>Xem và duyệt ngay &rarr;</b></a>
     </div>
 }
 
@@ -78,10 +57,10 @@ else if (TempPwFlag == "1")
                     }
                     else
                     {
-                        <form method="post" action="@($"/users/{u.Id}/reset-password")" class="inline" onsubmit="return confirm('Bạn chắc chắn muốn đặt lại mật khẩu cho tài khoản @u.FullName? Mật khẩu tạm thời sẽ được tạo và người dùng phải đổi khi đăng nhập.');">
-                            <AntiforgeryField />
-                            <button class="btn-sm warning" type="submit" title="Sinh mật khẩu tạm thời">Đặt lại MK</button>
-                        </form>
+                        <button class="btn-sm" style="background:#d97706;color:#fff;" type="button" title="Đặt lại mật khẩu cho @u.FullName"
+                                onclick="openResetModal(@u.Id, '@EscapeJs(u.FullName)', '@EscapeJs(u.Email)')">
+                            Đặt lại MK
+                        </button>
                     }
                 </td>
                 <td>
@@ -107,14 +86,268 @@ else if (TempPwFlag == "1")
     của tài khoản đó bị từ chối ở request kế tiếp.
 </p>
 
+<!-- Giai đoạn 1: Dialog xác nhận & thiết lập đặt lại mật khẩu -->
+<dialog id="resetPasswordModal" class="app-modal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2 id="modalTargetTitle">Đặt lại mật khẩu cho tài khoản</h2>
+            <button type="button" class="modal-close" onclick="closeResetModal()">&times;</button>
+        </div>
+        <form id="resetPasswordForm" method="post" action="@($"/users/{targetUserId}/reset-password")">
+            <AntiforgeryField />
+            <div class="modal-body">
+                <p id="modalTargetDesc" class="sub" style="margin: 0;"></p>
+                <div>
+                    <label style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px;">
+                        Mật khẩu mới (tùy chọn)
+                    </label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="position: relative; flex: 1;">
+                            <input id="newPasswordInput" name="newPassword" type="password"
+                                   placeholder="Nhập mật khẩu mới hoặc để trống để tự sinh"
+                                   style="width: 100%; padding-right: 42px;" />
+                            <button type="button" id="togglePasswordBtn" onclick="togglePasswordVisibility()"
+                                    style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px;"
+                                    title="Hiện / Ẩn mật khẩu">
+                                👁️
+                            </button>
+                        </div>
+                        <button type="button" class="btn-sm" onclick="suggestPassword()" style="white-space: nowrap; height: 38px; display: inline-flex; align-items: center; gap: 4px;">
+                            ⚡ Gợi ý
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-hint">
+                    💡 <b>Ghi chú:</b> Nếu để trống: Hệ thống sẽ tự tạo mật khẩu tạm thời ngẫu nhiên và gửi thẳng về email của người dùng (nếu hệ thống đã cấu hình SMTP).
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button type="button" class="btn" onclick="closeResetModal()">Hủy</button>
+                <button type="submit" class="btn-primary" style="background:#1f4e79;">Xác nhận đặt lại</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<!-- Giai đoạn 2: Dialog thông báo kết quả -->
+@if (hasResult)
+{
+    <dialog id="resultModal" class="app-modal">
+        <div class="modal-box">
+            @if (ManualFlag == "1")
+            {
+                <div class="modal-head">
+                    <h2>✅ Đặt lại mật khẩu thành công</h2>
+                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin: 0; font-size: 14.5px;">
+                        Mật khẩu bạn vừa thiết lập cho tài khoản:
+                    </p>
+                    <div class="pw-display-box">
+                        <code class="pw-code" style="letter-spacing: 1px;">@TempPw</code>
+                        <button type="button" class="btn-sm" style="background:#16a34a;" onclick="copyPassword('@TempPw', this)">Sao chép</button>
+                    </div>
+                    <div class="info-banner">
+                        📌 <b>Ghi chú:</b> Người dùng sẽ dùng mật khẩu này để đăng nhập và bắt buộc phải đổi mật khẩu mới ngay lần đầu tiên.
+                    </div>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(Msg))
+            {
+                <div class="modal-head">
+                    <h2>@(Msg.Contains("mật khẩu") ? "📧 Đã gửi mật khẩu tạm thời thành công" : "Thông báo")</h2>
+                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    @if (Msg.Contains("mật khẩu"))
+                    {
+                        <div class="info-banner">
+                            Hệ thống đã tự sinh mật khẩu tạm thời và gửi email tự động tới hòm thư của người dùng.
+                        </div>
+                    }
+                    <p class="sub" style="margin: 0; font-size: 14.5px;">@Msg</p>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(TempPw))
+            {
+                <div class="modal-head">
+                    <h2>🔑 Đặt lại mật khẩu tạm thời thành công</h2>
+                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin: 0; font-size: 14.5px;">
+                        Mật khẩu tạm thời cho tài khoản:
+                    </p>
+                    <div class="pw-display-box">
+                        <code class="pw-code" style="letter-spacing: 1px;">@TempPw</code>
+                        <button type="button" class="btn-sm" style="background:#16a34a;" onclick="copyPassword('@TempPw', this)">Sao chép</button>
+                    </div>
+                    <div class="warn-banner">
+                        ⚠️ <b>Lưu ý:</b> Do chưa cấu hình gửi email SMTP@(MailFailed == "1" ? " hoặc gửi email thất bại" : ""), mật khẩu này CHỈ hiển thị 1 lần duy nhất tại hộp thoại này. Vui lòng sao chép và gửi trực tiếp cho HR/Sinh viên IT.
+                    </div>
+                </div>
+            }
+            else if (TempPwFlag == "1")
+            {
+                <div class="modal-head">
+                    <h2>⚠️ Thông báo mật khẩu tạm</h2>
+                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert-err" style="margin: 0;">
+                        Mật khẩu tạm chỉ hiện một lần và đã hết hiệu lực hiển thị. Nếu chưa kịp ghi lại, hãy bấm "Đặt lại MK" thêm một lần nữa.
+                    </div>
+                </div>
+            }
+            <div class="modal-foot">
+                <button type="button" class="btn-primary" onclick="closeResultModal()">Đã hiểu / Đóng</button>
+            </div>
+        </div>
+    </dialog>
+}
+
+<script>
+    function openResetModal(id, fullName, email) {
+        var dialog = document.getElementById('resetPasswordModal');
+        var form = document.getElementById('resetPasswordForm');
+        if (form) form.action = '/users/' + id + '/reset-password';
+        var title = document.getElementById('modalTargetTitle');
+        if (title) title.textContent = 'Đặt lại mật khẩu cho: ' + fullName;
+        var desc = document.getElementById('modalTargetDesc');
+        if (desc) desc.textContent = 'Tài khoản: ' + email;
+        var input = document.getElementById('newPasswordInput');
+        if (input) {
+            input.value = '';
+            input.type = 'password';
+        }
+        var toggleBtn = document.getElementById('togglePasswordBtn');
+        if (toggleBtn) toggleBtn.textContent = '👁️';
+        if (dialog) {
+            if (typeof dialog.showModal === 'function') dialog.showModal();
+            else dialog.setAttribute('open', '');
+        }
+    }
+
+    function closeResetModal() {
+        var dialog = document.getElementById('resetPasswordModal');
+        if (dialog) {
+            if (typeof dialog.close === 'function') dialog.close();
+            else dialog.removeAttribute('open');
+        }
+    }
+
+    function togglePasswordVisibility() {
+        var input = document.getElementById('newPasswordInput');
+        var btn = document.getElementById('togglePasswordBtn');
+        if (!input) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            if (btn) btn.textContent = '🔒';
+        } else {
+            input.type = 'password';
+            if (btn) btn.textContent = '👁️';
+        }
+    }
+
+    async function suggestPassword() {
+        try {
+            var res = await fetch('/users/suggest-password');
+            if (res.ok) {
+                var data = await res.json();
+                var input = document.getElementById('newPasswordInput');
+                if (input && data.password) {
+                    input.value = data.password;
+                    input.type = 'text';
+                    var btn = document.getElementById('togglePasswordBtn');
+                    if (btn) btn.textContent = '🔒';
+                }
+            }
+        } catch (e) {
+            console.error('Lỗi khi lấy gợi ý mật khẩu:', e);
+        }
+    }
+
+    function closeResultModal() {
+        var dialog = document.getElementById('resultModal');
+        if (dialog) {
+            if (typeof dialog.close === 'function') dialog.close();
+            else dialog.removeAttribute('open');
+        }
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
+    function copyPassword(text, btn) {
+        if (!text) return;
+        var doChangeUi = function () {
+            var oldText = btn.textContent;
+            btn.textContent = 'Đã sao chép! ✓';
+            btn.style.backgroundColor = '#16a34a';
+            btn.style.color = '#fff';
+            setTimeout(function () {
+                btn.textContent = oldText;
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+            }, 2000);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(doChangeUi).catch(function () {
+                fallbackCopy(text);
+                doChangeUi();
+            });
+        } else {
+            fallbackCopy(text);
+            doChangeUi();
+        }
+    }
+
+    function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var resModal = document.getElementById('resultModal');
+        if (resModal) {
+            if (typeof resModal.showModal === 'function') resModal.showModal();
+            else resModal.setAttribute('open', '');
+        }
+
+        document.querySelectorAll('dialog.app-modal').forEach(function (dialog) {
+            dialog.addEventListener('click', function (e) {
+                var rect = dialog.getBoundingClientRect();
+                var isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+                                  rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+                if (!isInDialog) {
+                    if (dialog.id === 'resultModal') closeResultModal();
+                    else closeResetModal();
+                }
+            });
+        });
+    });
+</script>
+
 @code {
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
     [SupplyParameterFromQuery(Name = "err")] public string? Err { get; set; }
     [SupplyParameterFromQuery(Name = "msg")] public string? Msg { get; set; }
+    [SupplyParameterFromQuery(Name = "manual")] public string? ManualFlag { get; set; }
     // Chỉ là cờ "vừa reset xong" — mật khẩu KHÔNG bao giờ nằm trên URL (xem TempPasswordHandoff).
     [SupplyParameterFromQuery(Name = "tempPw")] public string? TempPwFlag { get; set; }
     [SupplyParameterFromQuery(Name = "mailfailed")] public string? MailFailed { get; set; }
     private string? TempPw;
+    private bool hasResult;
+    private int targetUserId = 0;
+    private int pendingCount;
     private List<User> userList = new();
     private List<Role> roleList = new();
     private int currentUid;
@@ -122,11 +355,16 @@ else if (TempPwFlag == "1")
     protected override async Task OnInitializedAsync()
     {
         userList = Users.GetAll();
-        // Danh sách vai trò lấy qua service — trang không còn tự inject AppDbContext.
         roleList = Users.GetRoles();
+        pendingCount = Users.GetPending().Count;
         if (AuthState != null) currentUid = CurrentUser.Id((await AuthState).User);
 
         if (TempPwFlag == "1" && Http.HttpContext is { } ctx && currentUid > 0)
             TempPw = TempPasswordHandoff.TakeOnce(ctx, DataProtection, currentUid);
+
+        hasResult = !string.IsNullOrEmpty(TempPw) || TempPwFlag == "1" || !string.IsNullOrEmpty(Msg);
     }
+
+    private static string EscapeJs(string? s) =>
+        (s ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\"", "\\\"");
 }

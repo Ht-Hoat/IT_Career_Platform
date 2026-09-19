@@ -127,6 +127,39 @@ else
             {
                 <p class="sub" style="margin-top:12px">@prepBlockedReason</p>
             }
+
+            @if (questionHistory.Count > 0)
+            {
+                <details style="margin-top:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;">
+                    <summary style="font-weight:600;cursor:pointer;user-select:none;color:#334155;">
+                        📜 Lịch sử câu hỏi đã tạo (@questionHistory.Count bộ)
+                    </summary>
+                    <div style="margin-top:12px;display:flex;flex-direction:column;gap:12px;">
+                        @for (int i = 0; i < questionHistory.Count; i++)
+                        {
+                            var hSet = questionHistory[i];
+                            <div style="background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:12px;">
+                                <div style="font-size:13px;font-weight:600;color:#64748b;margin-bottom:8px;">
+                                    Bộ câu hỏi #@(questionHistory.Count - i) @(hSet.IsOffline ? "· Ngoại tuyến" : "· Gemini AI")
+                                </div>
+                                <ol class="q-list" style="margin:0;padding-left:20px;">
+                                    @foreach (var q in hSet.Items)
+                                    {
+                                        <li class="q-item" style="margin-bottom:8px;">
+                                            <div class="q-text" style="font-weight:500;">@q.Question</div>
+                                            <span class="tag">@q.Category</span>
+                                            @if (!string.IsNullOrWhiteSpace(q.Hint))
+                                            {
+                                                <div class="q-hint" style="margin-top:4px;color:#475569;font-size:12.5px;">💡 Gợi ý trả lời: @q.Hint</div>
+                                            }
+                                        </li>
+                                    }
+                                </ol>
+                            </div>
+                        }
+                    </div>
+                </details>
+            }
         </div>
     }
 
@@ -147,6 +180,7 @@ else
     [SupplyParameterFromQuery(Name = "err")] public string? Err { get; set; }
     private CandidateApplicationView? app;
     private InterviewQuestionSet? questions;
+    private IReadOnlyList<InterviewQuestionSet> questionHistory = Array.Empty<InterviewQuestionSet>();
     private string? prepBlockedReason;
 
     protected override async Task OnInitializedAsync()
@@ -159,6 +193,7 @@ else
         if (app is null) return;
 
         questions = InterviewPrep.Get(AppId, uid);
+        questionHistory = InterviewPrep.GetHistory(AppId, uid);
         prepBlockedReason = InterviewPrep.WhyNot(AppId, uid);
     }
 }

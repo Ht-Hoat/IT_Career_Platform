@@ -1024,7 +1024,7 @@ public class JobService(AppDbContext db, IAuditService? audit = null, TimeProvid
     private DateTime TodayVn => VietnamDateHelper.Today(clock);
 
     public List<Job> GetAll() =>
-        db.Jobs.Include(j => j.Company)
+        db.Jobs.Include(j => j.Company).Include(j => j.CreatedBy)
                .OrderByDescending(j => j.CreatedAt).ThenByDescending(j => j.Id).ToList();
 
     public List<Job> GetOpen() =>

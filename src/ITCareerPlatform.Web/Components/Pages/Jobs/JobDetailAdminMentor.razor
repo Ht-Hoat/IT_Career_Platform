@@ -1,0 +1,153 @@
+@page "/jobs/{JobId:int}/detail"
+@attribute [Authorize(Roles = Roles.AdminOrMentor)]
+@inject IJobService Jobs
+@inject ICompanyService Companies
+@inject IApplicationService Applications
+@inject IUserService Users
+
+<div class="page-head">
+    <div>
+        <a class="btn ghost" href="/jobs" style="margin-bottom: 8px; display: inline-block;">← Quay lại danh sách tin</a>
+        <h1 class="page-title">@(job?.Title ?? "Chi tiết việc làm")</h1>
+    </div>
+    @if (job is not null)
+    {
+        <div class="row-actions">
+            <a class="btn-primary" href="@($"/jobs/{job.Id}/applicants")">👥 Xem danh sách ứng viên (@applicantCount)</a>
+            @if (canEdit)
+            {
+                <a class="btn ghost" href="@($"/jobs/edit/{job.Id}")">✏️ Sửa tin</a>
+            }
+        </div>
+    }
+</div>
+
+@if (job is null)
+{
+    <div class="panel">
+        <div class="alert-err">Không tìm thấy tin tuyển dụng.</div>
+        <p class="sub">Tin tuyển dụng bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
+        <a class="btn-primary" href="/jobs">Quay lại danh sách việc làm</a>
+    </div>
+}
+else
+{
+    var daysLeft = (job.Deadline.Date - VietnamDateHelper.Today()).Days;
+
+    <div class="panel" style="margin-bottom: 20px;">
+        <div class="job-card-head" style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <span class="@Ui.CategoryClass(job.Category)">@job.Category</span>
+            <span class="@Ui.LevelClass(job.Level)">@job.Level</span>
+            <span class="chip">@job.EmploymentType</span>
+            @if (job.Status == JobStatus.Open)
+            {
+                <span class="ok">● Đang mở</span>
+            }
+            else
+            {
+                <span class="lock">● Đã đóng</span>
+            }
+        </div>
+
+        <div class="job-meta" style="margin: 16px 0; font-size: 15px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px 24px;">
+            <span>📍 <b>Địa điểm:</b> @job.Location</span>
+            <span>💰 <b>Mức lương:</b> @Ui.SalaryText(job.SalaryMin, job.SalaryMax)</span>
+            <span class="@(daysLeft <= 7 ? "deadline-hot" : "")">
+                ⏰ <b>Hạn nộp:</b> @Ui.DateText(job.Deadline)@(daysLeft <= 7 ? $" (còn {daysLeft} ngày)" : "")
+            </span>
+            <span>👥 <b>Ứng viên:</b> @applicantCount đã nộp</span>
+            <span>📅 <b>Ngày đăng:</b> @Ui.DateText(job.CreatedAt)</span>
+            @if (!string.IsNullOrEmpty(mentorName))
+            {
+                <span>👤 <b>Người đăng:</b> @mentorName</span>
+            }
+        </div>
+
+        <div style="margin: 16px 0;">
+            <h4 style="margin: 0 0 8px 0;">Tech Stack yêu cầu:</h4>
+            <div class="job-tags">
+                @foreach (var t in job.TechStackList)
+                {
+                    <span class="chip">@t</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="panel" style="margin-bottom: 20px;">
+        <h2>📝 Mô tả công việc (JD)</h2>
+        @if (string.IsNullOrWhiteSpace(job.Description))
+        {
+            <p class="sub">Chưa có mô tả công việc.</p>
+        }
+        else
+        {
+            <div class="jd-text" style="white-space: pre-wrap; line-height: 1.6;">@job.Description</div>
+        }
+    </div>
+
+    <div class="panel" style="margin-bottom: 20px;">
+        <h2>✅ Yêu cầu ứng viên</h2>
+        @if (string.IsNullOrWhiteSpace(job.Requirements))
+        {
+            <p class="sub">Chưa có yêu cầu ứng viên.</p>
+        }
+        else
+        {
+            <div class="jd-text" style="white-space: pre-wrap; line-height: 1.6;">@job.Requirements</div>
+        }
+    </div>
+
+    @if (company is not null)
+    {
+        <div class="panel" style="margin-bottom: 20px;">
+            <h2>🏢 @company.Name</h2>
+            <div class="job-meta" style="margin: 10px 0; display: flex; flex-wrap: wrap; gap: 16px;">
+                @if (!string.IsNullOrWhiteSpace(company.Address))
+                {
+                    <span>📍 @company.Address</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(company.Website))
+                {
+                    <span>🔗 <a href="@company.Website" target="_blank" rel="noopener noreferrer">@company.Website</a></span>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(company.Description))
+            {
+                <div style="white-space: pre-wrap; line-height: 1.6; color: #334155;">@company.Description</div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int JobId { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Job? job;
+    private Company? company;
+    private string? mentorName;
+    private int applicantCount;
+    private bool canEdit;
+
+    protected override async Task OnInitializedAsync()
+    {
+        job = Jobs.GetById(JobId);
+        if (job is null) return;
+
+        company = Companies.GetById(job.CompanyId);
+
+        var mentor = Users.GetAll().FirstOrDefault(u => u.Id == job.CreatedById);
+        mentorName = mentor?.FullName;
+
+        var counts = Applications.CountForJobs(new List<int> { job.Id });
+        applicantCount = counts.GetValueOrDefault(job.Id, 0);
+
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            var uid = CurrentUser.Id(user);
+            canEdit = Jobs.CanModify(job.Id, uid) && job.Status == JobStatus.Open;
+        }
+    }
+}

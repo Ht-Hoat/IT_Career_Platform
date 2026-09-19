@@ -478,6 +478,9 @@ app.MapPost("/users/{id:int}/reset-password", async (int id, HttpContext ctx, IU
         return Results.Redirect("/users?err=" + Enc(error));
 
     var target = svc.GetAll().FirstOrDefault(u => u.Id == id);
+    var isManual = !string.IsNullOrWhiteSpace(manualPw);
+    var manualQuery = isManual ? "&manual=1" : "";
+
     if (email.IsConfigured && target is not null)
     {
         try
@@ -500,7 +503,7 @@ app.MapPost("/users/{id:int}/reset-password", async (int id, HttpContext ctx, IU
                 })), ctx.RequestAborted);
 
             return Results.Redirect("/users?msg=" + Enc(
-                $"Đã gửi mật khẩu tạm tới {target.Email}. Người dùng phải đổi mật khẩu ngay khi đăng nhập."));
+                $"Đã gửi mật khẩu tạm tới {target.Email}. Người dùng phải đổi mật khẩu ngay khi đăng nhập.") + manualQuery);
         }
         catch (Exception ex)
         {
@@ -508,12 +511,12 @@ app.MapPost("/users/{id:int}/reset-password", async (int id, HttpContext ctx, IU
             // về hiện trên màn hình, nếu không thì tài khoản đó không ai vào được nữa.
             SafeError(ctx, ex, $"gửi mật khẩu tạm cho tài khoản #{id}");
             TempPasswordHandoff.Store(ctx, dp, CurrentUserId(ctx), tempPassword);
-            return Results.Redirect("/users?tempPw=1&mailfailed=1");
+            return Results.Redirect("/users?tempPw=1&mailfailed=1" + manualQuery);
         }
     }
 
     TempPasswordHandoff.Store(ctx, dp, CurrentUserId(ctx), tempPassword);
-    return Results.Redirect("/users?tempPw=1");
+    return Results.Redirect("/users?tempPw=1" + manualQuery);
 }).RequireAuthorization(p => p.RequireRole(Roles.Admin));
 
 // HR-REG: Admin duyệt tài khoản HR đang chờ. Gửi email báo cho HR nếu đã cấu hình SMTP.

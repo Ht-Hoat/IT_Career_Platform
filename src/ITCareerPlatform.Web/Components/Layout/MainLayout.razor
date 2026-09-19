@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject INotificationService Notifs
+@inject IUserService Users
 
 <div class="app">
     <aside class="sidebar">
@@ -11,6 +12,7 @@
 
                     <AuthorizeView Roles="@Roles.Admin" Context="a">
                         <a href="/users">Quản lý tài khoản</a>
+                        <a href="/users/pending">Duyệt tài khoản HR @if (pendingCount > 0) { <span class="badge" style="background:#dc2626;color:#fff;padding:2px 6px;border-radius:10px;font-size:11px;font-weight:700;margin-left:4px;">@pendingCount</span> }</a>
                         <a href="/companies">Quản lý công ty</a>
                         <a href="/audit">Nhật ký hệ thống</a>
                     </AuthorizeView>
@@ -101,6 +103,7 @@
     private string roleName = "";
     private bool showBell;
     private int unread;
+    private int pendingCount;
     private List<Notification> items = new();
 
     // Hai truy vấn thông báo trước đây nằm thẳng trong markup, nên chúng chạy lại mỗi lần
@@ -110,6 +113,11 @@
         if (AuthState is null) return;
         var user = (await AuthState).User;
         roleName = CurrentUser.RoleName(user);
+
+        if (CurrentUser.IsAdmin(user))
+        {
+            pendingCount = Users.GetPending().Count;
+        }
 
         var uid = CurrentUser.Id(user);
         // P0-4: Bật chuông thông báo cho mọi vai trò đã đăng nhập (để Mentor nhận thông báo khi SV rút đơn)
