@@ -98,6 +98,42 @@
             </a>
         </div>
     </div>
+
+    @* Việc làm IT trên các nền tảng khác (VN + Quốc tế) — khôi phục nội dung từ bản integration-n1-n2,
+       thêm vào cuối trang chủ của Sinh viên. Mở ở tab mới, không thay đổi luồng nào khác của trang. *@
+    <div class="panel" style="margin-top:16px">
+        <h2>🔗 Việc làm IT trên các trang khác</h2>
+        <p class="sub">Tham khảo thêm cơ hội việc làm IT tại các nền tảng tuyển dụng uy tín trong nước.</p>
+        <div class="action-grid">
+            @foreach (var l in VnJobSites)
+            {
+                <a class="action-card" href="@l.Url" target="_blank" rel="noopener">
+                    <div class="action-card-icon">🔗</div>
+                    <div class="action-card-content">
+                        <div class="action-card-title">@l.Name</div>
+                        <div class="action-card-desc">@l.Desc</div>
+                    </div>
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+        <h2>🌏 Việc làm IT Quốc tế & Remote</h2>
+        <p class="sub">Cơ hội việc làm IT toàn cầu và làm việc từ xa.</p>
+        <div class="action-grid">
+            @foreach (var l in IntlJobSites)
+            {
+                <a class="action-card" href="@l.Url" target="_blank" rel="noopener">
+                    <div class="action-card-icon">🌐</div>
+                    <div class="action-card-content">
+                        <div class="action-card-title">@l.Name</div>
+                        <div class="action-card-desc">@l.Desc</div>
+                    </div>
+                </a>
+            }
+        </div>
+    </div>
 }
 else if (role == Roles.Mentor)
 {
@@ -331,6 +367,34 @@ else
 }
 
 @code {
+
+    // Danh sách trang tuyển dụng IT bên ngoài (VN + Quốc tế) hiển thị ở cuối trang chủ Sinh viên.
+    // Nội dung lấy lại từ trang Cổng tuyển dụng (Resources) của bản integration-n1-n2.
+    private record JobSite(string Name, string Url, string Desc);
+
+    private static readonly JobSite[] VnJobSites =
+    {
+        new("TopDev", "https://topdev.vn", "Việc làm IT hàng đầu Việt Nam"),
+        new("ITviec", "https://itviec.com", "Việc làm IT chất lượng cao"),
+        new("TopCV", "https://www.topcv.vn", "Tạo CV + tìm việc đa ngành"),
+        new("VietnamWorks", "https://www.vietnamworks.com", "Việc làm chuyên nghiệp"),
+        new("CareerViet", "https://careerviet.vn", "Cổng tuyển dụng lớn"),
+        new("JobsGO", "https://jobsgo.vn", "Tìm việc nhanh"),
+        new("CareerBuilder VN", "https://careerbuilder.vn", "Việc làm & tư vấn nghề"),
+        new("123job", "https://123job.vn", "Việc làm IT & thực tập"),
+    };
+
+    private static readonly JobSite[] IntlJobSites =
+    {
+        new("LinkedIn Jobs", "https://www.linkedin.com/jobs", "Mạng nghề nghiệp lớn nhất"),
+        new("Indeed", "https://www.indeed.com", "Công cụ tìm việc toàn cầu"),
+        new("Glassdoor", "https://www.glassdoor.com", "Việc làm + review công ty"),
+        new("Wellfound (AngelList)", "https://wellfound.com", "Việc làm startup"),
+        new("We Work Remotely", "https://weworkremotely.com", "Việc remote"),
+        new("Remote.co", "https://remote.co", "Cộng đồng làm việc từ xa"),
+        new("Stack Overflow Jobs", "https://stackoverflow.com/jobs", "Việc cho developer"),
+        new("RemoteOK", "https://remoteok.com", "Việc remote toàn cầu"),
+    };
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
     private string name = "", role = "";
     private int uid = 0;
