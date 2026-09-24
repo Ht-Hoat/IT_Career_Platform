@@ -54,22 +54,19 @@
                     <div class="row-actions">
                         <a class="btn-sm ghost" href="@($"/jobs/{j.Id}/detail")" title="Xem chi tiết JD">Xem JD</a>
                         <a class="btn-sm" href="@($"/jobs/{j.Id}/applicants")">Ứng viên</a>
-                        @if (isAdmin)
-                        {
-                            @* Chỉ xem: không có nút Sửa / Đóng / Mở lại. *@
-                        }
-                        else if (j.Status == JobStatus.Open)
+                        @* Admin chỉ xem: không có nút Sửa / Đóng / Mở lại. *@
+                        @if (!isAdmin && j.Status == JobStatus.Open)
                         {
                             <a class="btn-sm ghost" href="@($"/jobs/edit/{j.Id}")">Sửa</a>
                             <form method="post" action="@($"/jobs/{j.Id}/close")" onsubmit="return confirm('Bạn chắc chắn muốn đóng tin tuyển dụng này?');">
-                                <AntiforgeryField />
+                                <AntiforgeryToken />
                                 <button class="btn-sm danger-outline" type="submit">Đóng tin</button>
                             </form>
                         }
-                        else
+                        else if (!isAdmin)
                         {
                             <form method="post" action="@($"/jobs/{j.Id}/reopen")">
-                                <AntiforgeryField />
+                                <AntiforgeryToken />
                                 <button class="btn-sm success-outline" type="submit" title="Mở lại để nhận hồ sơ và sửa tin">Mở lại</button>
                             </form>
                         }
@@ -102,7 +99,9 @@
         // thông tin cạnh tranh, vừa hiện sẵn nút "Ứng viên" dẫn tới một trang báo không có
         // quyền. Kiểm tra quyền ở service vẫn là lớp bảo vệ thật; thay đổi này chỉ để giao
         // diện thôi mời người dùng bấm vào thứ họ không được phép.
-        jobs = (isAdmin ? Jobs.GetAll() : Jobs.GetByOwner(uid)).OrderByDescending(j => j.CreatedAt).ToList();
+        // Thứ tự (mới nhất trước, Id làm khóa phụ) do service sắp trong SQL — sắp lại ở đây chỉ
+        // tốn một lần duyệt cả danh sách cho đúng kết quả đã có, và bỏ mất khóa phụ theo Id.
+        jobs = isAdmin ? Jobs.GetAll() : Jobs.GetByOwner(uid);
         // Đếm theo đúng những tin đang hiển thị thay vì gộp cả bảng Applications.
         counts = Applications.CountForJobs(jobs.Select(j => j.Id).ToList());
     }

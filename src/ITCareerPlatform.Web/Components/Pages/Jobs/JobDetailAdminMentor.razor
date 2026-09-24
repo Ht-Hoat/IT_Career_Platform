@@ -1,9 +1,6 @@
 @page "/jobs/{JobId:int}/detail"
 @attribute [Authorize(Roles = Roles.AdminOrMentor)]
 @inject IJobService Jobs
-@inject ICompanyService Companies
-@inject IApplicationService Applications
-@inject IUserService Users
 
 <div class="page-head">
     <div>
@@ -24,6 +21,8 @@
 
 @if (job is null)
 {
+    @* Tin của Mentor khác và tin không tồn tại trả về CÙNG một trang — không xác nhận id nào
+       có thật, và không để lộ rằng tin đó tồn tại nhưng thuộc người khác. *@
     <div class="panel">
         <div class="alert-err">Không tìm thấy tin tuyển dụng.</div>
         <p class="sub">Tin tuyển dụng bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
@@ -32,8 +31,6 @@
 }
 else
 {
-    var daysLeft = (job.Deadline.Date - VietnamDateHelper.Today()).Days;
-
     <div class="panel" style="margin-bottom: 20px;">
         <div class="job-card-head" style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <span class="@Ui.CategoryClass(job.Category)">@job.Category</span>
@@ -52,8 +49,9 @@ else
         <div class="job-meta" style="margin: 16px 0; font-size: 15px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px 24px;">
             <span>📍 <b>Địa điểm:</b> @job.Location</span>
             <span>💰 <b>Mức lương:</b> @Ui.SalaryText(job.SalaryMin, job.SalaryMax)</span>
-            <span class="@(daysLeft <= 7 ? "deadline-hot" : "")">
-                ⏰ <b>Hạn nộp:</b> @Ui.DateText(job.Deadline)@(daysLeft <= 7 ? $" (còn {daysLeft} ngày)" : "")
+            @* Trang này thấy CẢ tin đã đóng và đã quá hạn, nên phần ghi chú phải xử lý số ngày âm. *@
+            <span class="@(Ui.DeadlineIsHot(job.Deadline) ? "deadline-hot" : "")">
+                ⏰ <b>Hạn nộp:</b> @Ui.DateText(job.Deadline)@Ui.DeadlineNote(job.Deadline)
             </span>
             <span>👥 <b>Ứng viên:</b> @applicantCount đã nộp</span>
             <span>📅 <b>Ngày đăng:</b> @Ui.DateText(job.CreatedAt)</span>
@@ -132,22 +130,20 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        job = Jobs.GetById(JobId);
-        if (job is null) return;
+        if (AuthState is null) return;
+        var uid = CurrentUser.Id((await AuthState).User);
 
-        company = Companies.GetById(job.CompanyId);
+        // Quyền nằm TRONG hàm đọc: tin mà người này không được xem trả về null, y hệt tin
+        // không tồn tại. [Authorize(Roles = AdminOrMentor)] chỉ nói "được vào trang này",
+        // không nói "được xem tin NÀY".
+        var row = Jobs.GetDetailForViewer(JobId, uid);
+        if (row is null) return;
 
-        var mentor = Users.GetAll().FirstOrDefault(u => u.Id == job.CreatedById);
-        mentorName = mentor?.FullName;
+        job = row.Job;
+        company = row.Company;
+        mentorName = row.OwnerName;
+        applicantCount = row.ApplicantCount;
 
-        var counts = Applications.CountForJobs(new List<int> { job.Id });
-        applicantCount = counts.GetValueOrDefault(job.Id, 0);
-
-        if (AuthState is not null)
-        {
-            var user = (await AuthState).User;
-            var uid = CurrentUser.Id(user);
-            canEdit = Jobs.CanModify(job.Id, uid) && job.Status == JobStatus.Open;
-        }
+        canEdit = row.CanModify && job.Status == JobStatus.Open;
     }
 }

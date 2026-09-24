@@ -31,6 +31,39 @@ public class HrRegistrationApprovalTests
         Assert.NotNull(u.CompanyId);       // công ty nhập lúc đăng ký đã được tạo/nối
     }
 
+    /// <summary>
+    /// Tên công ty đến từ một form CÔNG KHAI. Vượt nvarchar(160) trên SQL Server là một lần
+    /// ghi HỎNG chứ không phải chuỗi bị cắt — tức là một trang 500 cho người chưa đăng nhập.
+    /// </summary>
+    [Fact]
+    public void RegisterHr_ClipsOverlongCompanyName_InsteadOfFailingTheWrite()
+    {
+        using var t = new TestDb();
+        var (svc, _) = NewServices(t);
+
+        Assert.True(svc.RegisterHr("Trần HR", "hr@fpt.vn", HrPassword,
+            new string('C', Company.NameLimit + 80), out var err), err);
+
+        Assert.Equal(Company.NameLimit, t.NewContext().Companies.Single(c => c.Name.StartsWith("CCC")).Name.Length);
+    }
+
+    /// <summary>
+    /// Công ty và tài khoản phải cùng sống hoặc cùng chết. Ghi công ty ở một SaveChanges
+    /// riêng trước tài khoản sẽ để lại công ty mồ côi khi tài khoản không tạo được — do
+    /// người CHƯA ĐĂNG NHẬP tạo ra, và chỉ Admin mới dọn được.
+    /// </summary>
+    [Fact]
+    public void RegisterHr_WhenEmailIsTaken_LeavesNoOrphanCompany()
+    {
+        using var t = new TestDb();
+        var (svc, _) = NewServices(t);
+        t.AddUser("Đã có", "trung@fpt.vn", Roles.StudentId);
+
+        Assert.False(svc.RegisterHr("Trần HR", "trung@fpt.vn", HrPassword, "Công ty Mồ Côi", out _));
+
+        Assert.Empty(t.NewContext().Companies.Where(c => c.Name == "Công ty Mồ Côi"));
+    }
+
     [Fact]
     public void PendingHr_CannotLogIn_UntilApproved()
     {

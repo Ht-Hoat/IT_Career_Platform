@@ -50,7 +50,7 @@
                         <a href="/change-password">🔑 Đổi mật khẩu</a>
                         <div class="menu-sep"></div>
                         <form method="post" action="/account/logout">
-                            <AntiforgeryField />
+                            <AntiforgeryToken />
                             <button class="menu-danger" type="submit">↩ Đăng xuất</button>
                         </form>
                     </div>
@@ -79,7 +79,7 @@
                             @* Chỉ gửi id. Đường dẫn chuyển tới được đọc từ CSDL ở phía server —
                                trước đây nó là một ô ẩn trong form, tức là do client quyết định. *@
                             <form method="post" action="@($"/notifications/{n.Id}/read")" class="bell-item @(n.IsRead ? "" : "unread")">
-                                <AntiforgeryField />
+                                <AntiforgeryToken />
                                 <button type="submit">
                                     <b>@n.Title</b>
                                     <span>@n.Message</span>
@@ -105,6 +105,7 @@
     private int unread;
     private int pendingCount;
     private List<Notification> items = new();
+    private const int BellSize = 8;
 
     // Hai truy vấn thông báo trước đây nằm thẳng trong markup, nên chúng chạy lại mỗi lần
     // render mọi trang sinh viên, kể cả những trang vốn không đọc CSDL.
@@ -114,18 +115,21 @@
         var user = (await AuthState).User;
         roleName = CurrentUser.RoleName(user);
 
+        // COUNT(*), không phải GetPending().Count: layout render trên MỌI trang của Admin
+        // và chỉ cần con số, trong khi GetPending nạp cả hàng chờ kèm hai bảng JOIN.
         if (CurrentUser.IsAdmin(user))
-        {
-            pendingCount = Users.GetPending().Count;
-        }
+            pendingCount = Users.CountPending();
 
         var uid = CurrentUser.Id(user);
         // P0-4: Bật chuông thông báo cho mọi vai trò đã đăng nhập (để Mentor nhận thông báo khi SV rút đơn)
         showBell = user.Identity?.IsAuthenticated == true && uid > 0;
         if (!showBell) return;
 
-        items = Notifs.GetForUser(uid, 8);
-        unread = Notifs.CountUnread(uid);
+        // Danh sách và số chưa đọc trong MỘT lời gọi: service tự quyết khi nào đếm được tại
+        // chỗ và khi nào cần thêm một câu COUNT, nên "chưa đọc" chỉ có một định nghĩa.
+        var bell = Notifs.GetBell(uid, BellSize);
+        items = bell.Items;
+        unread = bell.Unread;
     }
 
     /// <summary>Hai chữ cái đầu cho ô avatar: "Phạm Thị Lan" → "PL" (chữ đầu của họ và của tên).</summary>

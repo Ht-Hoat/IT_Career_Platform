@@ -48,11 +48,11 @@ else
                     <td>
                         <div class="row-actions">
                             <form method="post" action="@($"/users/{u.Id}/approve")" class="inline">
-                                <AntiforgeryField />
+                                <AntiforgeryToken />
                                 <button class="btn-sm" style="background:#16a34a;color:#fff;" type="submit">Duyệt</button>
                             </form>
                             <form method="post" action="@($"/users/{u.Id}/reject")" class="inline" onsubmit="return confirm('Bạn chắc chắn muốn từ chối tài khoản HR này?');">
-                                <AntiforgeryField />
+                                <AntiforgeryToken />
                                 <button class="btn-sm danger" type="submit">Từ chối</button>
                             </form>
                         </div>

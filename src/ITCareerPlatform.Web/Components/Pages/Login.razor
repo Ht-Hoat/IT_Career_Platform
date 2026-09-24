@@ -22,7 +22,7 @@
             @if (PwChanged == "1") { <div class="alert-ok">Đã đổi mật khẩu. Mọi phiên đăng nhập cũ đã bị đăng xuất — vui lòng đăng nhập lại bằng mật khẩu mới.</div> }
             @if (HrPending == "1") { <div class="alert-ok">Tài khoản HR đang chờ Admin duyệt, bạn sẽ đăng nhập được sau khi được duyệt.</div> }
             <form method="post" action="/account/login" data-vi-validate>
-                <AntiforgeryField />
+                <AntiforgeryToken />
                 <label>Email</label>
                 <input name="email" type="email" value="@Email" placeholder="admin@itcp.vn" required />
                 <label>Mật khẩu</label>

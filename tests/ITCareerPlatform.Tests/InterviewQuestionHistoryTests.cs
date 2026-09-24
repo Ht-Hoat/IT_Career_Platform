@@ -82,7 +82,7 @@ public class InterviewQuestionHistoryTests
     }
 
     [Fact]
-    public void PrepService_History_OnlyForOwner()
+    public void PrepService_State_IsOwnerScoped_AndKeepsTheNewestSetOutOfHistory()
     {
         using var t = new TestDb();
         var mentor = t.AddMentor();
@@ -95,8 +95,20 @@ public class InterviewQuestionHistoryTests
 
         var prep = new InterviewPrepService(t.Db, apps, new AiServiceFake(), new AiInputBuilder(t.CvStorage));
 
-        Assert.Single(prep.GetHistory(app.Id, owner.Id));           // chủ đơn xem được
-        Assert.Empty(prep.GetHistory(app.Id, owner.Id + 12345));    // người khác thì không
+        // Người khác: không có gì, y như đơn không tồn tại.
+        Assert.Null(prep.GetState(app.Id, owner.Id + 12345));
+
+        // Chủ đơn: thấy bộ mới nhất, và lịch sử KHÔNG chứa lại chính nó — trang hiện bộ mới
+        // nhất đầy đủ ở trên, để cả vào lịch sử là in hai lần trên cùng một trang.
+        var state = Assert.IsType<InterviewPrepState>(prep.GetState(app.Id, owner.Id));
+        Assert.Equal("của owner", Assert.Single(state.Questions!.Items).Question);
+        Assert.Empty(state.Previous);
+
+        // Tạo bộ thứ hai: bộ cũ mới rơi vào "các bộ trước đó".
+        apps.SaveAiQuestions(app.Id, Set("bộ mới hơn"));
+        var after = Assert.IsType<InterviewPrepState>(prep.GetState(app.Id, owner.Id));
+        Assert.Equal("bộ mới hơn", Assert.Single(after.Questions!.Items).Question);
+        Assert.Equal("của owner", Assert.Single(Assert.Single(after.Previous).Items).Question);
     }
 
     // Fake AI đủ để dựng InterviewPrepService cho test lịch sử (không gọi mạng).

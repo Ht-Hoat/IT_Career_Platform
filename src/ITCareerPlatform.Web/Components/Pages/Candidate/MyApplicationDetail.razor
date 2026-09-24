@@ -33,11 +33,12 @@ else
         </p>
         <p class="sub">Yêu cầu Tech Stack của vị trí: <b>@app.JobTechStack</b></p>
 
-        @if (app.Status != ApplicationStatus.Accepted && app.Status != ApplicationStatus.Rejected && app.Status != ApplicationStatus.Withdrawn)
+        @* "Đã chốt" hỏi qua ApplicationStatusFlow — cùng nguồn sự thật với endpoint rút đơn. *@
+        @if (!ApplicationStatusFlow.IsTerminal(app.Status))
         {
             <div style="margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
                 <form method="post" action="@($"/applications/{app.Id}/withdraw")" class="inline" onsubmit="return confirm('Bạn chắc chắn muốn rút đơn ứng tuyển này? Hành động này không thể hoàn tác.');">
-                    <AntiforgeryField />
+                    <AntiforgeryToken />
                     <button class="btn danger" type="submit">🛑 Rút đơn ứng tuyển</button>
                 </form>
             </div>
@@ -118,7 +119,7 @@ else
             @if (prepBlockedReason is null)
             {
                 <form method="post" action="@($"/my-applications/{app.Id}/interview-prep")" style="margin-top:12px">
-                    <AntiforgeryField />
+                    <AntiforgeryToken />
                     <button class="btn-ai" type="submit">@(questions is null ? "💬 Tạo bộ câu hỏi luyện phỏng vấn" : "🔄 Tạo bộ câu hỏi mới")</button>
                 </form>
                 <p class="sub" style="margin-top:8px">🔐 Nội dung CV của bạn có thể được gửi tới dịch vụ AI (Google Gemini) để soạn câu hỏi.</p>
@@ -132,7 +133,7 @@ else
             {
                 <details style="margin-top:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;">
                     <summary style="font-weight:600;cursor:pointer;user-select:none;color:#334155;">
-                        📜 Lịch sử câu hỏi đã tạo (@questionHistory.Count bộ)
+                        📜 Các bộ câu hỏi đã tạo trước đó (@questionHistory.Count bộ)
                     </summary>
                     <div style="margin-top:12px;display:flex;flex-direction:column;gap:12px;">
                         @for (int i = 0; i < questionHistory.Count; i++)
@@ -140,7 +141,7 @@ else
                             var hSet = questionHistory[i];
                             <div style="background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:12px;">
                                 <div style="font-size:13px;font-weight:600;color:#64748b;margin-bottom:8px;">
-                                    Bộ câu hỏi #@(questionHistory.Count - i) @(hSet.IsOffline ? "· Ngoại tuyến" : "· Gemini AI")
+                                    Bộ câu hỏi trước #@(questionHistory.Count - i) @(hSet.IsOffline ? "· Ngoại tuyến" : "· Gemini AI")
                                 </div>
                                 <ol class="q-list" style="margin:0;padding-left:20px;">
                                     @foreach (var q in hSet.Items)
@@ -192,8 +193,17 @@ else
         app = uid > 0 ? Applications.GetForCandidate(AppId, uid) : null;
         if (app is null) return;
 
-        questions = InterviewPrep.Get(AppId, uid);
-        questionHistory = InterviewPrep.GetHistory(AppId, uid);
-        prepBlockedReason = InterviewPrep.WhyNot(AppId, uid);
+        // MỘT lời gọi cho cả ba thứ. Hỏi riêng lẻ thì mỗi hàm tự kiểm lại quyền sở hữu,
+        // thành 5 lượt đi CSDL cho một trang. questionHistory ở đây là các bộ TRƯỚC ĐÓ —
+        // bộ mới nhất đã hiện đầy đủ ở trên, để cả vào lịch sử là hiện hai lần.
+        var prep = InterviewPrep.GetState(AppId, uid);
+        // null nghĩa là đơn vừa biến mất giữa hai truy vấn. Để nguyên thì prepBlockedReason cũng
+        // null, và markup đọc "null = tạo được" nên sẽ hiện nút tạo bộ câu hỏi cho một đơn không
+        // còn tồn tại — trang "không tìm thấy" là câu trả lời đúng.
+        if (prep is null) { app = null; return; }
+
+        questions = prep.Questions;
+        questionHistory = prep.Previous;
+        prepBlockedReason = prep.BlockedReason;
     }
 }

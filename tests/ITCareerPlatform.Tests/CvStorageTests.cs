@@ -264,4 +264,68 @@ public class CvStorageTests : IDisposable
         Assert.NotNull(p.CvData);
     }
 
+    /// <summary>
+    /// Upload hỏng hoặc di trú chạy dở để lại byte[0] trong cột cũ. Trả nó về như một CV hợp
+    /// lệ nghĩa là người dùng tải được tệp 0 byte, còn AI chấm trên một CV rỗng mà không có
+    /// lỗi nào báo. Cả hai đường đọc phải nói CÙNG một điều: không có CV.
+    /// </summary>
+    [Fact]
+    public async Task ZeroLengthLegacyColumn_IsTreatedAsNoCv_OnEveryReadPath()
+    {
+        using var t = new TestDb();
+        var job = t.AddJob(t.AddMentor().Id);
+        var profile = t.AddProfile(t.AddUser("SV", "sv-empty@itcp.vn", Roles.StudentId).Id, withCv: false);
+        profile.CvData = Array.Empty<byte>();
+        profile.CvStorageKey = null;
+        t.Db.SaveChanges();
+
+        var app = t.AddApplication(job.Id, profile.Id);
+        app.CvDataSnapshot = Array.Empty<byte>();
+        app.CvStorageKeySnapshot = null;
+        t.Db.SaveChanges();
+
+        // 1) đường tải CV của đơn
+        var apps = new ApplicationService(t.Db, new NotificationService(t.Db), t.CvStorage, new AuditService(t.Db));
+        Assert.Null(await apps.ReadCvAsync(app.Id));
+
+        // 2) đường đọc CV của hồ sơ (tự kiểm tra, chấm điểm)
+        Assert.Null(await new ProfileService(t.Db, t.CvStorage).ReadCvAsync(profile));
+
+        // Cột "CV" trong danh sách ứng viên vẫn đánh dấu là CÓ: nó được tính bằng một vị ngữ
+        // SQL (blob IS NOT NULL) và EF không dịch được độ dài của byte[] sang SQL. Chấp nhận
+        // sai lệch đó cho một hàng dữ liệu hỏng, đổi lấy việc danh sách không phải nạp nội
+        // dung CV về chỉ để đếm byte.
+    }
+
+    /// <summary>
+    /// Và vẫn phải đúng SAU KHI di trú. CvMigrationRunner lọc theo "CvData != null", mà byte[0]
+    /// không phải null — nên nó ghi một tệp 0 byte vào storage và gán cho hồ sơ một khóa hợp lệ.
+    /// Nếu nhánh đọc từ storage chỉ kiểm khác-null thì CV rỗng lại được trả về như CV thật, tức
+    /// là lỗi quay lại đúng chỗ vừa vá — chỉ khác đường đi.
+    /// </summary>
+    [Fact]
+    public async Task AfterMigration_AnEmptyCvIsStillNoCv_EvenThoughItNowHasAStorageKey()
+    {
+        using var t = new TestDb();
+        var profile = t.AddProfile(t.AddUser("SV", "sv-empty@itcp.vn", Roles.StudentId).Id, withCv: false);
+        profile.CvData = Array.Empty<byte>();
+        profile.CvStorageKey = null;
+        t.Db.SaveChanges();
+
+        var migrated = await NewRunner(t).RunAsync();
+        Assert.Equal(1, migrated.Profiles);   // hàng rỗng vẫn được xử lý một lần
+
+        var after = t.NewContext().CandidateProfiles.Single();
+        // KHÔNG nhận khóa: blob rỗng chẳng có gì để chuyển, và một khóa hợp lệ ở đây sẽ làm cột
+        // "CV" trong danh sách ứng viên báo "có CV" cho một hồ sơ không có CV.
+        Assert.Null(after.CvStorageKey);
+        Assert.Null(after.CvData);            // cột rỗng dọn luôn, nên hàng rời khỏi điều kiện lọc
+        Assert.False(after.HasCv);
+
+        // Và đọc ra vẫn là "không có CV".
+        Assert.Null(await new ProfileService(t.Db, t.CvStorage).ReadCvAsync(after));
+
+        // Chạy lại lần hai: không còn gì để làm (idempotent, và không có vòng lặp vô hạn).
+        Assert.True((await NewRunner(t).RunAsync()).DidNothing);
+    }
 }

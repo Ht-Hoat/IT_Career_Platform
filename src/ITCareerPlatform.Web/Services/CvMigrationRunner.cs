@@ -14,6 +14,11 @@ namespace ITCareerPlatform.Services;
 /// Không xóa cột byte[] và cũng không đặt nó về null ở đây: giữ lại bản gốc cho tới khi
 /// người vận hành đã kiểm tra xong là cách duy nhất để quay lui được. Việc dọn cột là một
 /// bước RIÊNG, có ý thức, làm sau.
+///
+/// NGOẠI LỆ duy nhất: blob RỖNG (byte[0], do một lần upload hỏng). Nó không phải bản gốc của
+/// gì cả nên không có gì để quay lui, và nếu cứ đem đi lưu thì storage nhận một tệp 0 byte
+/// còn hồ sơ nhận một KHÓA hợp lệ — từ đó cột "CV" trong danh sách ứng viên báo "có CV" cho
+/// một hồ sơ không có CV. Với những hàng đó, chỉ dọn cột về null.
 /// </summary>
 public class CvMigrationRunner(AppDbContext db, ICvStorage storage, ILogger<CvMigrationRunner> logger)
 {
@@ -54,7 +59,10 @@ public class CvMigrationRunner(AppDbContext db, ICvStorage storage, ILogger<CvMi
             if (batch.Count == 0) return done;
 
             foreach (var p in batch)
-                p.CvStorageKey = await storage.SaveAsync(p.CvData!, p.CvFileName ?? "cv.pdf", ct);
+            {
+                if (p.CvData!.Length == 0) { p.CvData = null; continue; }   // blob rỗng: không có CV
+                p.CvStorageKey = await storage.SaveAsync(p.CvData, p.CvFileName ?? "cv.pdf", ct);
+            }
 
             await db.SaveChangesAsync(ct);
             done += batch.Count;
@@ -74,7 +82,10 @@ public class CvMigrationRunner(AppDbContext db, ICvStorage storage, ILogger<CvMi
             if (batch.Count == 0) return done;
 
             foreach (var a in batch)
-                a.CvStorageKeySnapshot = await storage.SaveAsync(a.CvDataSnapshot!, a.CvFileNameSnapshot, ct);
+            {
+                if (a.CvDataSnapshot!.Length == 0) { a.CvDataSnapshot = null; continue; }
+                a.CvStorageKeySnapshot = await storage.SaveAsync(a.CvDataSnapshot, a.CvFileNameSnapshot, ct);
+            }
 
             await db.SaveChangesAsync(ct);
             done += batch.Count;

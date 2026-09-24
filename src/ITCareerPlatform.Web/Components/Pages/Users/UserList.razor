@@ -39,7 +39,7 @@
                     else
                     {
                         <form method="post" action="@($"/users/{u.Id}/change-role")" class="inline">
-                            <AntiforgeryField />
+                            <AntiforgeryToken />
                             <select name="roleId">
                                 @foreach (var r in roleList)
                                 {
@@ -57,10 +57,24 @@
                     }
                     else
                     {
-                        <button class="btn-sm" style="background:#d97706;color:#fff;" type="button" title="Đặt lại mật khẩu cho @u.FullName"
-                                onclick="openResetModal(@u.Id, '@EscapeJs(u.FullName)', '@EscapeJs(u.Email)')">
-                            Đặt lại MK
-                        </button>
+                        @* Form POST THẬT, đúng route của dòng này. Cả trang render tĩnh, không
+                           có Blazor interactivity — mọi thao tác Admin khác cũng là form thuần.
+                           openResetModal trả false khi mở được hộp thoại (dừng lần gửi này lại
+                           để Admin gõ mật khẩu tay), và trả true khi không mở được — lúc đó
+                           form cứ gửi như thường và hệ thống tự sinh mật khẩu. Nhờ vậy một lỗi
+                           JavaScript không lấy mất đường cứu tài khoản bị khóa. *@
+                        <form method="post" action="@($"/users/{u.Id}/reset-password")" class="inline"
+                              onsubmit="return openResetModal(this, '@EscapeJs(u.FullName)', '@EscapeJs(u.Email)');">
+                            <AntiforgeryToken />
+                            @* Ô mật khẩu tay: hộp thoại điền vào đây rồi gửi CHÍNH form này.
+                               Không có JavaScript thì ô để trống và hệ thống tự sinh mật khẩu —
+                               đúng hành vi cũ, và vẫn là một form POST hoàn chỉnh. *@
+                            <input type="hidden" name="newPassword" value="" />
+                            <button class="btn-sm" style="background:#d97706;color:#fff;" type="submit"
+                                    title="Đặt lại mật khẩu cho @u.FullName">
+                                Đặt lại MK
+                            </button>
+                        </form>
                     }
                 </td>
                 <td>
@@ -71,7 +85,7 @@
                     else
                     {
                         <form method="post" action="@($"/users/{u.Id}/toggle-lock")" class="inline" onsubmit="return confirm('Bạn chắc chắn muốn khóa/mở khóa tài khoản này?');">
-                            <AntiforgeryField />
+                            <AntiforgeryToken />
                             <button class="btn-sm @(u.IsActive ? "danger" : "")" type="submit">@(u.IsActive ? "Khóa" : "Mở khóa")</button>
                         </form>
                     }
@@ -87,108 +101,64 @@
 </p>
 
 <!-- Giai đoạn 1: Dialog xác nhận & thiết lập đặt lại mật khẩu -->
+@*
+   Hộp thoại này KHÔNG phải một form. Nó chỉ thu mật khẩu tay rồi gửi form của đúng dòng vừa
+   bấm — dòng nào cũng đã là một form POST hoàn chỉnh, có action thật và có token.
+   Một form thứ hai ở đây sẽ phải mang action render sẵn, mà lúc render thì chưa biết bấm
+   vào dòng nào: bản trước đặt action là "/users/0/reset-password", một route không tồn tại.
+*@
 <dialog id="resetPasswordModal" class="app-modal">
     <div class="modal-box">
         <div class="modal-head">
             <h2 id="modalTargetTitle">Đặt lại mật khẩu cho tài khoản</h2>
             <button type="button" class="modal-close" onclick="closeResetModal()">&times;</button>
         </div>
-        <form id="resetPasswordForm" method="post" action="@($"/users/{targetUserId}/reset-password")">
-            <AntiforgeryField />
-            <div class="modal-body">
-                <p id="modalTargetDesc" class="sub" style="margin: 0;"></p>
-                <div>
-                    <label style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px;">
-                        Mật khẩu mới (tùy chọn)
-                    </label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <div style="position: relative; flex: 1;">
-                            <input id="newPasswordInput" name="newPassword" type="password"
-                                   placeholder="Nhập mật khẩu mới hoặc để trống để tự sinh"
-                                   style="width: 100%; padding-right: 42px;" />
-                            <button type="button" id="togglePasswordBtn" onclick="togglePasswordVisibility()"
-                                    style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px;"
-                                    title="Hiện / Ẩn mật khẩu">
-                                👁️
-                            </button>
-                        </div>
-                        <button type="button" class="btn-sm" onclick="suggestPassword()" style="white-space: nowrap; height: 38px; display: inline-flex; align-items: center; gap: 4px;">
-                            ⚡ Gợi ý
+        <div class="modal-body">
+            <p id="modalTargetDesc" class="sub" style="margin: 0;"></p>
+            <div>
+                <label for="newPasswordInput" style="font-weight: 600; font-size: 13.5px; display: block; margin-bottom: 6px;">
+                    Mật khẩu mới (tùy chọn)
+                </label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="position: relative; flex: 1;">
+                        <input id="newPasswordInput" type="password"
+                               placeholder="Nhập mật khẩu mới hoặc để trống để tự sinh"
+                               style="width: 100%; padding-right: 42px;" />
+                        <button type="button" id="togglePasswordBtn" onclick="togglePasswordVisibility()"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px;"
+                                title="Hiện / Ẩn mật khẩu">
+                            👁️
                         </button>
                     </div>
-                </div>
-                <div class="modal-hint">
-                    💡 <b>Ghi chú:</b> Nếu để trống: Hệ thống sẽ tự tạo mật khẩu tạm thời ngẫu nhiên và gửi thẳng về email của người dùng (nếu hệ thống đã cấu hình SMTP).
+                    <button type="button" class="btn-sm" onclick="suggestPassword()" style="white-space: nowrap; height: 38px; display: inline-flex; align-items: center; gap: 4px;">
+                        ⚡ Gợi ý
+                    </button>
                 </div>
             </div>
-            <div class="modal-foot">
-                <button type="button" class="btn" onclick="closeResetModal()">Hủy</button>
-                <button type="submit" class="btn-primary" style="background:#1f4e79;">Xác nhận đặt lại</button>
+            <div class="modal-hint">
+                💡 <b>Ghi chú:</b> Nếu để trống: Hệ thống sẽ tự tạo mật khẩu tạm thời ngẫu nhiên và gửi thẳng về email của người dùng (nếu hệ thống đã cấu hình SMTP).
             </div>
-        </form>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn" onclick="closeResetModal()">Hủy</button>
+            <button type="button" class="btn-primary" style="background:#1f4e79;" onclick="confirmReset()">Xác nhận đặt lại</button>
+        </div>
     </div>
 </dialog>
 
 <!-- Giai đoạn 2: Dialog thông báo kết quả -->
+@*
+   Một nguồn duy nhất: cookie one-shot mô tả trọn kết cục (đã gửi email / phải tự đọc / gửi
+   hỏng, và mật khẩu do Admin gõ hay hệ thống sinh). Không còn tổ hợp cờ nào để mâu thuẫn,
+   nên cũng không còn nhánh nào có thể vẽ ra một ô mật khẩu RỖNG.
+   Cờ ?tempPw=1 trên URL chỉ nói "vừa có một lần đặt lại" — đủ để giải thích khi Admin tải
+   lại trang và mật khẩu đã hết hiệu lực hiển thị.
+*@
 @if (hasResult)
 {
     <dialog id="resultModal" class="app-modal">
         <div class="modal-box">
-            @if (ManualFlag == "1")
-            {
-                <div class="modal-head">
-                    <h2>✅ Đặt lại mật khẩu thành công</h2>
-                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin: 0; font-size: 14.5px;">
-                        Mật khẩu bạn vừa thiết lập cho tài khoản:
-                    </p>
-                    <div class="pw-display-box">
-                        <code class="pw-code" style="letter-spacing: 1px;">@TempPw</code>
-                        <button type="button" class="btn-sm" style="background:#16a34a;" onclick="copyPassword('@TempPw', this)">Sao chép</button>
-                    </div>
-                    <div class="info-banner">
-                        📌 <b>Ghi chú:</b> Người dùng sẽ dùng mật khẩu này để đăng nhập và bắt buộc phải đổi mật khẩu mới ngay lần đầu tiên.
-                    </div>
-                </div>
-            }
-            else if (!string.IsNullOrEmpty(Msg))
-            {
-                <div class="modal-head">
-                    <h2>@(Msg.Contains("mật khẩu") ? "📧 Đã gửi mật khẩu tạm thời thành công" : "Thông báo")</h2>
-                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    @if (Msg.Contains("mật khẩu"))
-                    {
-                        <div class="info-banner">
-                            Hệ thống đã tự sinh mật khẩu tạm thời và gửi email tự động tới hòm thư của người dùng.
-                        </div>
-                    }
-                    <p class="sub" style="margin: 0; font-size: 14.5px;">@Msg</p>
-                </div>
-            }
-            else if (!string.IsNullOrEmpty(TempPw))
-            {
-                <div class="modal-head">
-                    <h2>🔑 Đặt lại mật khẩu tạm thời thành công</h2>
-                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="margin: 0; font-size: 14.5px;">
-                        Mật khẩu tạm thời cho tài khoản:
-                    </p>
-                    <div class="pw-display-box">
-                        <code class="pw-code" style="letter-spacing: 1px;">@TempPw</code>
-                        <button type="button" class="btn-sm" style="background:#16a34a;" onclick="copyPassword('@TempPw', this)">Sao chép</button>
-                    </div>
-                    <div class="warn-banner">
-                        ⚠️ <b>Lưu ý:</b> Do chưa cấu hình gửi email SMTP@(MailFailed == "1" ? " hoặc gửi email thất bại" : ""), mật khẩu này CHỈ hiển thị 1 lần duy nhất tại hộp thoại này. Vui lòng sao chép và gửi trực tiếp cho HR/Sinh viên IT.
-                    </div>
-                </div>
-            }
-            else if (TempPwFlag == "1")
+            @if (result is null)
             {
                 <div class="modal-head">
                     <h2>⚠️ Thông báo mật khẩu tạm</h2>
@@ -200,6 +170,52 @@
                     </div>
                 </div>
             }
+            else if (result.Delivery == ResetDelivery.Emailed)
+            {
+                <div class="modal-head">
+                    <h2>📧 Đã gửi mật khẩu tạm thời thành công</h2>
+                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="info-banner">
+                        @(result.Manual
+                            ? "Mật khẩu bạn vừa thiết lập đã được gửi tự động tới hòm thư của người dùng."
+                            : "Hệ thống đã tự sinh mật khẩu tạm thời và gửi email tự động tới hòm thư của người dùng.")
+                    </div>
+                    <p class="sub" style="margin: 0; font-size: 14.5px;">
+                        Đã gửi tới <b>@result.TargetEmail</b>. Người dùng phải đổi mật khẩu ngay khi đăng nhập.
+                    </p>
+                </div>
+            }
+            else
+            {
+                <div class="modal-head">
+                    <h2>@(result.Manual ? "✅ Đặt lại mật khẩu thành công" : "🔑 Đặt lại mật khẩu tạm thời thành công")</h2>
+                    <button type="button" class="modal-close" onclick="closeResultModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin: 0; font-size: 14.5px;">
+                        @(result.Manual ? "Mật khẩu bạn vừa thiết lập" : "Mật khẩu tạm thời")@(string.IsNullOrEmpty(result.TargetEmail) ? "" : " cho tài khoản"):
+                        @if (!string.IsNullOrEmpty(result.TargetEmail)) { <b>@result.TargetEmail</b> }
+                    </p>
+                    <div class="pw-display-box">
+                        <code class="pw-code" style="letter-spacing: 1px;">@result.Password</code>
+                        @* EscapeJs, không phải @result.Password trần: mật khẩu Admin gõ tay có thể
+                           chứa dấu nháy, và nháy chưa escape làm cả câu lệnh onclick thành lỗi cú
+                           pháp — nút im lặng không làm gì, mà mật khẩu chỉ hiện đúng một lần. *@
+                        <button type="button" class="btn-sm" style="background:#16a34a;" onclick="copyPassword('@EscapeJs(result.Password)', this)">Sao chép</button>
+                    </div>
+                    @if (result.Manual)
+                    {
+                        <div class="info-banner">
+                            📌 <b>Ghi chú:</b> Người dùng sẽ dùng mật khẩu này để đăng nhập và bắt buộc phải đổi mật khẩu mới ngay lần đầu tiên.
+                        </div>
+                    }
+                    <div class="warn-banner">
+                        ⚠️ <b>Lưu ý:</b> Do @(result.Delivery == ResetDelivery.ShownAfterMailFailure ? "gửi email thất bại" : "chưa cấu hình gửi email SMTP"), mật khẩu này CHỈ hiển thị 1 lần duy nhất tại hộp thoại này. Vui lòng sao chép và gửi trực tiếp cho HR/Sinh viên IT.
+                    </div>
+                </div>
+            }
             <div class="modal-foot">
                 <button type="button" class="btn-primary" onclick="closeResultModal()">Đã hiểu / Đóng</button>
             </div>
@@ -208,25 +224,44 @@
 }
 
 <script>
-    function openResetModal(id, fullName, email) {
+    // Form của dòng nào đang chờ hộp thoại điền mật khẩu.
+    var pendingResetForm = null;
+
+    // Trả về false = đã mở hộp thoại, chặn lần gửi form này lại để Admin gõ mật khẩu tay.
+    // Trả về true  = không mở được (trình duyệt không hỗ trợ <dialog>, hoặc markup thiếu),
+    //                để form gửi thẳng và hệ thống tự sinh mật khẩu. Nhờ vậy một lỗi
+    //                JavaScript không lấy mất đường cứu tài khoản bị khóa.
+    function openResetModal(rowForm, fullName, email) {
         var dialog = document.getElementById('resetPasswordModal');
-        var form = document.getElementById('resetPasswordForm');
-        if (form) form.action = '/users/' + id + '/reset-password';
+        var input = document.getElementById('newPasswordInput');
+        if (!dialog || !input || typeof dialog.showModal !== 'function') return true;
+
+        pendingResetForm = rowForm;
+
         var title = document.getElementById('modalTargetTitle');
         if (title) title.textContent = 'Đặt lại mật khẩu cho: ' + fullName;
         var desc = document.getElementById('modalTargetDesc');
         if (desc) desc.textContent = 'Tài khoản: ' + email;
-        var input = document.getElementById('newPasswordInput');
-        if (input) {
-            input.value = '';
-            input.type = 'password';
-        }
+        input.value = '';
+        input.type = 'password';
         var toggleBtn = document.getElementById('togglePasswordBtn');
         if (toggleBtn) toggleBtn.textContent = '👁️';
-        if (dialog) {
-            if (typeof dialog.showModal === 'function') dialog.showModal();
-            else dialog.setAttribute('open', '');
-        }
+
+        dialog.showModal();
+        return false;
+    }
+
+    // Chép mật khẩu vào ô ẩn của form dòng rồi gửi form ĐÓ. form.submit() không kích hoạt
+    // onsubmit nên không mở lại hộp thoại.
+    function confirmReset() {
+        if (!pendingResetForm) return;
+        var input = document.getElementById('newPasswordInput');
+        var hidden = pendingResetForm.querySelector('input[name="newPassword"]');
+        if (hidden) hidden.value = input ? input.value : '';
+        var form = pendingResetForm;
+        pendingResetForm = null;
+        closeResetModal();
+        form.submit();
     }
 
     function closeResetModal() {
@@ -339,14 +374,11 @@
 @code {
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
     [SupplyParameterFromQuery(Name = "err")] public string? Err { get; set; }
-    [SupplyParameterFromQuery(Name = "msg")] public string? Msg { get; set; }
-    [SupplyParameterFromQuery(Name = "manual")] public string? ManualFlag { get; set; }
-    // Chỉ là cờ "vừa reset xong" — mật khẩu KHÔNG bao giờ nằm trên URL (xem TempPasswordHandoff).
+    // Cờ DUY NHẤT còn lại, và nó chỉ nói "vừa có một lần đặt lại mật khẩu". Kết cục là gì thì
+    // đọc từ cookie one-shot — mật khẩu KHÔNG bao giờ nằm trên URL (xem TempPasswordHandoff).
     [SupplyParameterFromQuery(Name = "tempPw")] public string? TempPwFlag { get; set; }
-    [SupplyParameterFromQuery(Name = "mailfailed")] public string? MailFailed { get; set; }
-    private string? TempPw;
+    private ResetHandoff? result;
     private bool hasResult;
-    private int targetUserId = 0;
     private int pendingCount;
     private List<User> userList = new();
     private List<Role> roleList = new();
@@ -356,15 +388,22 @@
     {
         userList = Users.GetAll();
         roleList = Users.GetRoles();
-        pendingCount = Users.GetPending().Count;
+        pendingCount = Users.CountPending();
         if (AuthState != null) currentUid = CurrentUser.Id((await AuthState).User);
 
-        if (TempPwFlag == "1" && Http.HttpContext is { } ctx && currentUid > 0)
-            TempPw = TempPasswordHandoff.TakeOnce(ctx, DataProtection, currentUid);
-
-        hasResult = !string.IsNullOrEmpty(TempPw) || TempPwFlag == "1" || !string.IsNullOrEmpty(Msg);
+        hasResult = TempPwFlag == "1";
+        if (hasResult && Http.HttpContext is { } ctx && currentUid > 0)
+            result = TempPasswordHandoff.TakeOnce(ctx, DataProtection, currentUid);
     }
 
+    /// <summary>
+    /// Thoát chuỗi để nhúng vào literal JavaScript nháy đơn. Ngoài nháy và backslash còn phải
+    /// xử lý xuống dòng và U+2028/U+2029 — chúng kết thúc câu lệnh JS y như \n — cùng với "&lt;"
+    /// để một giá trị chứa "&lt;/script&gt;" không cắt ngang khối script.
+    /// </summary>
     private static string EscapeJs(string? s) =>
-        (s ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\"", "\\\"");
+        (s ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\"", "\\\"")
+                 .Replace("\r", "\\r").Replace("\n", "\\n")
+                 .Replace("\u2028", "\\u2028").Replace("\u2029", "\\u2029")
+                 .Replace("<", "\\u003C");
 }

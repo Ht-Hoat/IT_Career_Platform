@@ -15,6 +15,8 @@ public interface IAuthService { User? Validate(string email, string password); }
 public interface IUserService
 {
     List<User> GetAll();
+    /// <summary>Một user theo khóa chính — thay cho việc nạp cả bảng Users rồi lọc ở C#.</summary>
+    User? GetById(int id);
     List<Role> GetRoles();
     /// <summary>Đếm bằng COUNT(*) — trang chủ trước đây nạp cả bảng Users chỉ để lấy .Count.</summary>
     int CountAll();
@@ -55,8 +57,20 @@ public interface IUserService
     /// <summary>HR-REG: Admin từ chối một tài khoản đang chờ → xóa hồ sơ (chưa có dữ liệu phụ thuộc).</summary>
     bool RejectUser(int userId, int actorUserId, out string error);
 
+    /// <summary>
+    /// Người có thể đứng tên tin tuyển dụng (Admin + Mentor) — cho ô "gán công ty".
+    /// Lọc trong SQL: trang này trước đây nạp CẢ bảng Users rồi mới bỏ sinh viên ở C#.
+    /// </summary>
+    List<User> GetJobPosters();
+
     /// <summary>HR-REG: danh sách tài khoản đang chờ Admin duyệt (mới đăng ký lên trước).</summary>
     List<User> GetPending();
+
+    /// <summary>
+    /// Đếm bằng COUNT(*). Layout render trên MỌI trang của Admin và chỉ cần con số cho huy
+    /// hiệu — GetPending().Count nạp cả hàng chờ kèm hai bảng JOIN rồi vứt đi.
+    /// </summary>
+    int CountPending();
 }
 
 public interface IJobService
@@ -74,14 +88,29 @@ public interface IJobService
     /// chi tiết tồn tại chính là để hiển thị hai trường đó.
     /// </summary>
     Job? GetVisibleForCandidate(int id);
+    /// <summary>
+    /// Tất cả những gì trang chi tiết tin (Admin/Mentor) hiển thị — và trả null khi người
+    /// hỏi KHÔNG được xem tin này.
+    ///
+    /// Quyền nằm TRONG hàm đọc, không phải ở lời dặn "nhớ gọi GetRights trước": một trang
+    /// quên gọi là một lần rò dữ liệu im lặng, và chuyện đó đã xảy ra hai lần ở đây.
+    /// Cùng khuôn với <see cref="GetVisibleForCandidate"/>.
+    /// </summary>
+    JobDetailView? GetDetailForViewer(int id, int actorUserId);
+
+    /// <summary>
+    /// Tin để đổ vào form SỬA, hoặc null nếu người hỏi không được sửa nó. Kèm Company để
+    /// dải chỉ-đọc "công ty của tin" không tốn thêm một truy vấn.
+    /// </summary>
+    Job? GetForEdit(int id, int actorUserId);
     Job Create(Job job);
     void Update(int id, Job input, int actorUserId);        // ATS-05
     void Close(int id, int actorUserId);                    // ATS-06
     void Reopen(int id, int actorUserId);
     /// <summary>Actor có quyền sửa/đóng/mở lại tin và xử lý ứng viên của nó không — chỉ Mentor tạo tin.</summary>
     bool CanModify(int jobId, int actorUserId);
-    /// <summary>Actor có được XEM tin và ứng viên của nó không — Mentor tạo tin, hoặc Admin (chỉ xem).</summary>
-    bool CanView(int jobId, int actorUserId);
+    /// <summary>Cả hai quyền trong MỘT truy vấn — cho trang cần hỏi cả "xem được" lẫn "sửa được".</summary>
+    AccessRights GetRights(int jobId, int actorUserId);
     // ATS-07 + N2.C: lọc theo Category + TechStack + Level + Lương + Hình thức + Địa điểm
     List<Job> Filter(string? category, string? techStack, string? level, string sort,
         decimal? minSalary = null, string? employmentType = null, string? location = null);
@@ -221,13 +250,15 @@ public interface IApplicationService
     /// </summary>
     Dictionary<int, string> AppliedJobStatus(int candidateUserId);
     /// <summary>XEM đơn: Mentor chủ tin, hoặc Admin (chỉ xem).</summary>
-    bool CanAccess(int appId, int actorUserId, bool isAdmin);
+    bool CanAccess(int appId, int actorUserId);
     /// <summary>
     /// THAO TÁC trên đơn (chấm AI, chốt điểm, đổi trạng thái, ghi chú, sinh câu hỏi): chỉ
     /// Mentor chủ tin. Admin giám sát chứ không tuyển dụng thay — kể cả trên tin do chính
     /// mình tạo từ trước.
     /// </summary>
     bool CanModify(int appId, int actorUserId);
+    /// <summary>Cả hai quyền trong MỘT truy vấn — cho trang cần hỏi cả "xem được" lẫn "thao tác được".</summary>
+    AccessRights GetRights(int appId, int actorUserId);
     void SaveAiEvaluation(int appId, AiEvaluation eval);                  // ATS-13/14
     bool UpdateStatus(int appId, string newStatus, int actorUserId, out string message); // ATS-17
     /// <summary>
@@ -254,9 +285,18 @@ public interface IApplicationService
     // Dành cho SINH VIÊN chuẩn bị buổi phỏng vấn đã được mời; đọc/ghi qua InterviewPrepService,
     // nơi kiểm chủ đơn, trạng thái và sự đồng ý xử lý dữ liệu.
     InterviewQuestionSet? GetAiQuestions(int appId);
-    void SaveAiQuestions(int appId, InterviewQuestionSet set);
+    /// <summary>
+    /// Trả về false khi KHÔNG lưu được (bộ rỗng, hoặc một câu mà vẫn vượt cột). Người gọi
+    /// phải dựa vào giá trị này chứ không đọc lại bộ câu hỏi: đọc lại sẽ thấy bộ CŨ và báo
+    /// thành công cho một lần tạo chẳng ghi được gì.
+    /// </summary>
+    bool SaveAiQuestions(int appId, InterviewQuestionSet set);
     /// <summary>HIST: lịch sử các bộ câu hỏi đã sinh cho đơn (mới nhất trước).</summary>
-    List<InterviewQuestionSet> GetAiQuestionHistory(int appId);
+    /// <summary>
+    /// HIST: các bộ câu hỏi đã sinh cho đơn, mới nhất trước. <paramref name="skip"/> để người
+    /// gọi bỏ bộ đang hiển thị ở nơi khác mà KHÔNG phải kéo nó về rồi vứt đi.
+    /// </summary>
+    List<InterviewQuestionSet> GetAiQuestionHistory(int appId, int skip = 0, int take = InterviewQuestionSnapshot.HistoryLimit);
 
     // ===== N1.G (bản của Nhóm 2) — dùng cho Mentor Command Center ở trang chủ =====
     // Ba hàm này nhận (actorUserId, isAdmin) thay vì int? mentorUserId như nhóm record
@@ -276,14 +316,35 @@ public interface IAuditService
 
 public record AuditEntry(int Id, string ActorName, string Action, string TableName, string Details, DateTime Timestamp);
 
+/// <summary>
+/// Số học của phân trang, phát biểu đúng MỘT lần. Con số in ở chân bảng ("Trang X / Y") và
+/// cái kẹp mà truy vấn dùng phải là cùng một công thức: lệch nhau thì ?p=9999 cho ra bảng
+/// rỗng kèm dòng "Trang 9999 / 3" và không có nút nào quay lại được.
+/// </summary>
+public static class Paging
+{
+    public static int LastPage(int total, int pageSize) =>
+        total == 0 ? 1 : (int)Math.Ceiling((double)total / pageSize);
+
+    /// <summary>Kẹp CẢ HAI đầu, không chỉ trần dưới.</summary>
+    public static int Clamp(int page, int total, int pageSize) =>
+        Math.Clamp(page, 1, LastPage(total, pageSize));
+}
+
 public record AuditPage(IReadOnlyList<AuditEntry> Items, int Total, int Page, int PageSize)
 {
-    public int TotalPages => Total == 0 ? 1 : (int)Math.Ceiling((double)Total / PageSize);
+    public int TotalPages => Paging.LastPage(Total, PageSize);
     public bool HasPrev => Page > 1;
     public bool HasNext => Page < TotalPages;
 }
 
 public record CategoryCount(string Category, int Count);
+
+/// <summary>
+/// Tin + công ty + tên người đăng + số ứng viên + có được sửa hay không — tất cả những gì
+/// trang chi tiết cần. CanModify đi kèm ở đây để trang không phải hỏi quyền lần thứ hai.
+/// </summary>
+public record JobDetailView(Job Job, Company? Company, string? OwnerName, int ApplicantCount, bool CanModify);
 
 /// <summary>Một hồ sơ kèm thông tin tin tuyển dụng — cho bảng "Top hồ sơ chưa xem xét" (N2.I).</summary>
 public record MentorApplicantItem(int Id, string FullName, string Email, string TechSkillTags,
@@ -329,11 +390,22 @@ public record JobApplicantCount(int JobId, string JobTitle, string Category, str
 
 public record DayCount(DateTime Day, int Count);
 
+/// <summary>Những gì chuông thông báo trên layout cần — danh sách và con số, lấy cùng một lúc.</summary>
+public record NotificationBell(List<Notification> Items, int Unread);
+
 public interface INotificationService                                     // NTF-01
 {
     void Add(int userId, string title, string message, string link);
     List<Notification> GetForUser(int userId, int take = 20);
     int CountUnread(int userId);
+
+    /// <summary>
+    /// Danh sách cho chuông + số chưa đọc, trong MỘT lời gọi. Lối tắt "lấy chưa đủ take nghĩa
+    /// là đã có tất cả, đếm luôn tại chỗ" nằm Ở ĐÂY chứ không ở layout: đặt ngoài service thì
+    /// "chưa đọc" có hai định nghĩa, và huy hiệu sẽ nói khác nhau cho người có dưới và trên
+    /// take thông báo. Layout render trên MỌI trang nên một truy vấn tiết kiệm được là đáng.
+    /// </summary>
+    NotificationBell GetBell(int userId, int take = 20);
     /// <summary>Chỉ đánh dấu thông báo THUỘC VỀ userId. Trả về Link đã lưu để chuyển trang.</summary>
     string? MarkRead(int id, int userId);
 }
@@ -349,9 +421,9 @@ public record ApplicantListItem(int Id, string FullName, string Email, string Te
 }
 
 /// <summary>
-/// N1.F: bốn khoảng % phù hợp. "Chưa đánh giá" là lựa chọn THỨ TƯ bắt buộc — chỉ có ba
-/// khoảng số thì những đơn chưa ai chấm biến mất khỏi mọi lựa chọn, và không có gì trên
-/// màn hình nói cho Mentor biết vì sao danh sách thiếu người.
+/// Ba khoảng % phù hợp — CHÚ GIẢI MÀU của cột "% phù hợp (AI)", không còn là bộ lọc.
+/// Nhãn ở đây và màu ở <see cref="Ui.ScoreClass"/> phải cắt tại cùng những con số, nếu không
+/// chú giải sẽ nói một chuyện mà ô màu bên cạnh nó nói chuyện khác.
 /// </summary>
 public static class ScoreBand
 {
@@ -366,9 +438,6 @@ public static class ScoreBand
         High == $"> {ScoreThreshold.HighAbove}%"
         && Mid == $"{ScoreThreshold.MidFrom} - {ScoreThreshold.HighAbove}%"
         && Low == $"< {ScoreThreshold.MidFrom}%";
-    public const string Unscored = "Chưa đánh giá";
-
-    public static readonly string[] All = { High, Mid, Low, Unscored };
 }
 
 /// <summary>
@@ -378,14 +447,12 @@ public static class ScoreBand
 public record ApplicantFilter(
     string? Status = null,
     bool? HasCv = null,
-    string? Band = null,
     string? Level = null,
     IReadOnlyList<string>? RequiredTech = null)
 {
     /// <summary>Có tiêu chí nào đang bật không — để giao diện biết lúc nào hiện nút "Xóa lọc".</summary>
     public bool IsActive =>
-        !string.IsNullOrWhiteSpace(Status) || HasCv is not null ||
-        !string.IsNullOrWhiteSpace(Band) || !string.IsNullOrWhiteSpace(Level) ||
+        !string.IsNullOrWhiteSpace(Status) || HasCv is not null || !string.IsNullOrWhiteSpace(Level) ||
         RequiredTech is { Count: > 0 };
 
     /// <summary>
@@ -400,7 +467,7 @@ public record ApplicantFilter(
     /// lọc theo tiêu chí đó, chứ không phải lọc ra bảng rỗng.
     /// </summary>
     public static ApplicantFilter FromQuery(
-        string? status, string? hasCv, string? band, string? level,
+        string? status, string? hasCv, string? level,
         IEnumerable<string>? tech, IReadOnlyList<string> jobTech)
     {
         // Ô tick công nghệ dựng từ chính Tech Stack của tin, nên chỉ nhận giá trị thuộc tin đó.
@@ -411,7 +478,6 @@ public record ApplicantFilter(
         return new ApplicantFilter(
             Status: ApplicationStatus.All.Contains(status) ? status : null,
             HasCv: hasCv switch { "1" => true, "0" => false, _ => null },
-            Band: ScoreBand.All.Contains(band) ? band : null,
             Level: CandidateLevel.IsValid(level) ? level : null,
             RequiredTech: selected.Count > 0 ? selected.ToList() : null);
     }
@@ -423,7 +489,7 @@ public record ApplicantFilter(
 /// </summary>
 public record ApplicantPage(IReadOnlyList<ApplicantListItem> Items, int Total, int Page, int PageSize)
 {
-    public int TotalPages => Total == 0 ? 1 : (int)Math.Ceiling((double)Total / PageSize);
+    public int TotalPages => Paging.LastPage(Total, PageSize);
     public bool HasPrev => Page > 1;
     public bool HasNext => Page < TotalPages;
 
@@ -563,6 +629,11 @@ public class UserService(AppDbContext db, IAuditService? audit = null) : IUserSe
 
     public List<User> GetAll() => db.Users.Include(u => u.Role).OrderBy(u => u.Id).ToList();
 
+    // AsNoTracking: mọi người gọi chỉ ĐỌC (tên, email) — theo dõi thay đổi ở đây chỉ giữ
+    // lại nguyên hàng User (kể cả PasswordHash) trong change tracker mà không bao giờ ghi.
+    public User? GetById(int id) =>
+        db.Users.AsNoTracking().Include(u => u.Role).FirstOrDefault(u => u.Id == id);
+
     public List<Role> GetRoles() => db.Roles.AsNoTracking().OrderBy(r => r.Id).ToList();
 
     public int CountAll() => db.Users.Count();
@@ -660,7 +731,7 @@ public class UserService(AppDbContext db, IAuditService? audit = null) : IUserSe
         }
 
         if (db.Users.Any(u => u.Email == normalized))
-        { error = "Email này đã được đăng ký, vui lòng dùng email khác hoặc đăng nhập."; return false; }
+        { error = EmailTaken; return false; }
 
         db.Users.Add(new User
         {
@@ -670,8 +741,33 @@ public class UserService(AppDbContext db, IAuditService? audit = null) : IUserSe
             RoleId = Roles.StudentId,
             IsActive = true
         });
-        db.SaveChanges();
-        return true;
+        return TrySaveNewAccount(out error);
+    }
+
+    /// <summary>Câu trả lời duy nhất cho "email này đã có người dùng" — cả hai đường đăng ký công khai.</summary>
+    private const string EmailTaken = "Email này đã được đăng ký, vui lòng dùng email khác hoặc đăng nhập.";
+
+    /// <summary>
+    /// Ghi tài khoản mới vừa Add vào context. Trả false khi unique index trên Email chặn lại:
+    /// hai người cùng đăng ký một email trong tích tắc thì nhánh <c>Any(...)</c> bên trên không
+    /// thấy nhau, và một DbUpdateException lọt ra khỏi endpoint đăng ký CÔNG KHAI là một trang
+    /// 500 cho người chưa đăng nhập. Dùng chung cho cả hai đường đăng ký — chỉ chặn một đường
+    /// thì đường còn lại vẫn nổ đúng như cũ.
+    /// </summary>
+    private bool TrySaveNewAccount(out string error)
+    {
+        try
+        {
+            db.SaveChanges();
+            error = "";
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            // Cùng một câu với nhánh kiểm tra bên trên — không nói thêm gì về CSDL.
+            error = EmailTaken;
+            return false;
+        }
     }
 
     // N1.A: đổi mật khẩu. Trả false kèm lý do thay vì ném ngoại lệ — endpoint chỉ việc
@@ -769,25 +865,33 @@ public class UserService(AppDbContext db, IAuditService? audit = null) : IUserSe
         catch (ArgumentException ex) { error = ex.Message; return false; }
 
         if (db.Users.Any(u => u.Email == normalized))
-        { error = "Email này đã được đăng ký, vui lòng dùng email khác hoặc đăng nhập."; return false; }
+        { error = EmailTaken; return false; }
 
         // Công ty là tùy chọn khi đăng ký: có nhập thì tạo/nối, không thì Admin gán lúc duyệt.
+        //
+        // CẮT đúng giới hạn cột trước khi ghi: giá trị này đến từ một form CÔNG KHAI, và
+        // trên SQL Server thì vượt nvarchar(160) là một lần ghi HỎNG (DbUpdateException ném
+        // ra khỏi endpoint không có try/catch = trang 500), chứ không phải chuỗi bị cắt.
+        var cname = TextLimits.Clip(companyName, Company.NameLimit);
+
+        Company? newCompany = null;
         int? companyId = null;
-        var cname = (companyName ?? "").Trim();
-        if (cname.Length > 0)
+        if (cname is not null)
         {
             var existing = db.Companies.FirstOrDefault(c => c.Name == cname);
             if (existing is not null) companyId = existing.Id;
             else
             {
-                var c = new Company { Name = cname };
-                db.Companies.Add(c);
-                db.SaveChanges();
-                companyId = c.Id;
+                // KHÔNG SaveChanges riêng ở đây: công ty và tài khoản phải cùng sống hoặc
+                // cùng chết. Ghi trước rồi user hỏng (hoặc Admin bấm Từ chối, vốn chỉ xóa
+                // User) sẽ để lại một công ty mồ côi vĩnh viễn trong danh sách /companies,
+                // do người CHƯA ĐĂNG NHẬP tạo ra.
+                newCompany = new Company { Name = cname };
+                db.Companies.Add(newCompany);
             }
         }
 
-        db.Users.Add(new User
+        var user = new User
         {
             FullName = fullName.Trim(),
             Email = normalized,
@@ -796,9 +900,11 @@ public class UserService(AppDbContext db, IAuditService? audit = null) : IUserSe
             IsActive = false,          // chưa duyệt thì chưa đăng nhập được (AuthService chặn IsActive=false)
             PendingApproval = true,
             CompanyId = companyId
-        });
-        db.SaveChanges();
-        return true;
+        };
+        if (newCompany is not null) user.Company = newCompany;   // EF tự điền CompanyId sau khi chèn công ty
+        db.Users.Add(user);
+
+        return TrySaveNewAccount(out error);
     }
 
     /// <summary>HR-REG: Admin duyệt tài khoản chờ → kích hoạt.</summary>
@@ -840,6 +946,13 @@ public class UserService(AppDbContext db, IAuditService? audit = null) : IUserSe
         db.Users.Include(u => u.Role).Include(u => u.Company)
                 .Where(u => u.PendingApproval)
                 .OrderBy(u => u.CreatedAt).ToList();
+
+    public int CountPending() => db.Users.Count(u => u.PendingApproval);
+
+    public List<User> GetJobPosters() =>
+        db.Users.AsNoTracking().Include(u => u.Role)
+                .Where(u => u.RoleId != Roles.StudentId)
+                .OrderBy(u => u.Id).ToList();
 
     /// <summary>
     /// Mật khẩu tạm sinh bằng RandomNumberGenerator (nguồn ngẫu nhiên mật mã học).
@@ -924,6 +1037,15 @@ public class UserService(AppDbContext db, IAuditService? audit = null) : IUserSe
             throw new ArgumentException($"Mật khẩu phải có tối thiểu {MinPasswordLength} ký tự.");
         if (!new EmailAddressAttribute().IsValid(normalizedEmail))
             throw new ArgumentException("Email không đúng định dạng.");
+
+        // Độ dài cột đối chiếu với chính annotation trên User, không chép lại con số ở đây.
+        // Ba service ghi dữ liệu người dùng khác (Job, Company, Profile) đã làm đúng bước này;
+        // thiếu nó, một họ tên 500 ký tự đi thẳng xuống SQL Server và nổ thành lỗi ghi HỎNG —
+        // trên /account/register là một trang 500 cho người chưa đăng nhập.
+        var probe = new User { FullName = fullName.Trim(), Email = normalizedEmail, PasswordHash = "x" };
+        var results = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(probe, new ValidationContext(probe), results, validateAllProperties: true))
+            throw new ArgumentException(results[0].ErrorMessage ?? "Thông tin tài khoản không hợp lệ.");
     }
 }
 
@@ -940,9 +1062,9 @@ public class AuditService(AppDbContext db) : IAuditService
         db.AuditLogs.Add(new AuditLog
         {
             UserId = actorUserId,
-            Action = Truncate(action, 60),
-            TableName = Truncate(table, 60),
-            Details = Truncate(details, 500)
+            Action = TextLimits.Cut(action, 60),
+            TableName = TextLimits.Cut(table, 60),
+            Details = TextLimits.Cut(details, 500)
             // Timestamp do AppDbContext đóng dấu tập trung (UTC) — P0-2.
         });
         db.SaveChanges();
@@ -953,10 +1075,7 @@ public class AuditService(AppDbContext db) : IAuditService
         pageSize = Math.Clamp(pageSize, 1, 200);
 
         var total = db.AuditLogs.Count();
-        // Kẹp cả trần trên, không chỉ trần dưới: ?p=9999 trên 3 trang dữ liệu trước đây cho
-        // ra một bảng rỗng kèm dòng "Trang 9999 / 3" và không có nút nào quay lại được.
-        var lastPage = total == 0 ? 1 : (int)Math.Ceiling((double)total / pageSize);
-        page = Math.Clamp(page, 1, lastPage);
+        page = Paging.Clamp(page, total, pageSize);
         // Tên người thực hiện lấy kèm trong cùng truy vấn. Bản cũ nạp toàn bộ bảng Users
         // (kể cả PasswordHash) chỉ để dựng từ điển id -> tên.
         var items = db.AuditLogs.AsNoTracking()
@@ -971,8 +1090,27 @@ public class AuditService(AppDbContext db) : IAuditService
 
         return new AuditPage(items, total, page, pageSize);
     }
+}
 
-    private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
+/// <summary>
+/// Cắt chuỗi đúng giới hạn cột trước khi lưu; chuỗi rỗng/khoảng trắng lưu thành null để
+/// phân biệt "không có" với "có mà trống". Dùng chung cho mọi service ghi dữ liệu do người dùng
+/// hoặc mô hình AI tạo ra — vượt cột trên SQL Server là một lần ghi HỎNG chứ không phải cắt.
+/// </summary>
+internal static class TextLimits
+{
+    /// <summary>Cắt và chuẩn hóa: khoảng trắng hai đầu bỏ đi, rỗng thành null.</summary>
+    public static string? Clip(string? value, int max)
+    {
+        var s = value?.Trim();
+        return string.IsNullOrEmpty(s) ? null : Cut(s, max);
+    }
+
+    /// <summary>
+    /// Chỉ cắt, không chuẩn hóa — cho những cột KHÔNG nullable (tiêu đề thông báo, dòng audit),
+    /// nơi chuỗi rỗng là giá trị hợp lệ chứ không phải "không có".
+    /// </summary>
+    public static string Cut(string s, int max) => s.Length <= max ? s : s[..max];
 }
 
 // =====================================================================
@@ -986,29 +1124,40 @@ public class AuditService(AppDbContext db) : IAuditService
 //  JobService và ApplicationService cùng gọi vào đây (ApplicationService không nhận
 //  IJobService — đổi constructor sẽ kéo theo mọi chỗ dựng nó).
 // =====================================================================
+/// <summary>XEM: Mentor chủ tin hoặc Admin. THAO TÁC: chỉ Mentor chủ tin. Không tìm thấy: cả hai false.</summary>
+public readonly record struct AccessRights(bool CanView, bool CanModify);
+
 internal static class JobOwnership
 {
-    public static bool CanModify(AppDbContext db, int jobId, int actorUserId)
+    public static AccessRights ForJob(AppDbContext db, int jobId, int actorUserId) =>
+        Evaluate(db, db.Jobs.Where(j => j.Id == jobId).Select(j => (int?)j.CreatedById), actorUserId);
+
+    public static AccessRights ForApplication(AppDbContext db, int appId, int actorUserId) =>
+        Evaluate(db, db.Applications.Where(a => a.Id == appId).Select(a => (int?)a.Job!.CreatedById), actorUserId);
+
+    public static bool CanModify(AppDbContext db, int jobId, int actorUserId) => ForJob(db, jobId, actorUserId).CanModify;
+
+    public static bool IsMentor(AppDbContext db, int userId) =>
+        db.Users.Where(u => u.Id == userId).Select(u => (int?)u.RoleId).FirstOrDefault() == Roles.MentorId;
+
+    /// <summary>
+    /// Chủ tin và vai trò người hỏi lấy trong CÙNG một câu SQL (vai trò là subquery). Tách
+    /// làm hai hàm riêng thì một lần hỏi "xem được không, sửa được không" tốn 4 lượt đi CSDL.
+    /// </summary>
+    private static AccessRights Evaluate(AppDbContext db, IQueryable<int?> ownerOf, int actorUserId)
     {
-        var ownerId = OwnerOf(db, jobId);
-        return ownerId is not null && ownerId == actorUserId && RoleOf(db, actorUserId) == Roles.MentorId;
+        var row = ownerOf
+            .Select(owner => new
+            {
+                Owner = owner,
+                Role = db.Users.Where(u => u.Id == actorUserId).Select(u => (int?)u.RoleId).FirstOrDefault()
+            })
+            .FirstOrDefault();
+        if (row?.Owner is null) return default;
+
+        var ownerMentor = row.Role == Roles.MentorId && row.Owner == actorUserId;
+        return new AccessRights(CanView: ownerMentor || row.Role == Roles.AdminId, CanModify: ownerMentor);
     }
-
-    public static bool CanView(AppDbContext db, int jobId, int actorUserId)
-    {
-        var ownerId = OwnerOf(db, jobId);
-        if (ownerId is null) return false;
-        var role = RoleOf(db, actorUserId);
-        return role == Roles.AdminId || (role == Roles.MentorId && ownerId == actorUserId);
-    }
-
-    public static bool IsMentor(AppDbContext db, int userId) => RoleOf(db, userId) == Roles.MentorId;
-
-    private static int? OwnerOf(AppDbContext db, int jobId) =>
-        db.Jobs.Where(j => j.Id == jobId).Select(j => (int?)j.CreatedById).FirstOrDefault();
-
-    private static int? RoleOf(AppDbContext db, int userId) =>
-        db.Users.Where(u => u.Id == userId).Select(u => (int?)u.RoleId).FirstOrDefault();
 }
 
 // =====================================================================
@@ -1044,6 +1193,23 @@ public class JobService(AppDbContext db, IAuditService? audit = null, TimeProvid
 
     // P0-1: cùng một vị ngữ "còn nhận hồ sơ" mà Filter đang dùng, phát biểu lại đúng một
     // lần ở đây để trang chi tiết và danh sách không thể nói hai điều khác nhau.
+    public JobDetailView? GetDetailForViewer(int id, int actorUserId)
+    {
+        var rights = JobOwnership.ForJob(db, id, actorUserId);
+        if (!rights.CanView) return null;
+
+        return db.Jobs.AsNoTracking()
+                 .Where(j => j.Id == id)
+                 .Select(j => new JobDetailView(j, j.Company, j.CreatedBy!.FullName,
+                                                j.Applications.Count(), rights.CanModify))
+                 .FirstOrDefault();
+    }
+
+    public Job? GetForEdit(int id, int actorUserId) =>
+        JobOwnership.CanModify(db, id, actorUserId)
+            ? db.Jobs.AsNoTracking().Include(j => j.Company).FirstOrDefault(j => j.Id == id)
+            : null;
+
     public Job? GetVisibleForCandidate(int id)
     {
         var today = TodayVn;
@@ -1140,7 +1306,7 @@ public class JobService(AppDbContext db, IAuditService? audit = null, TimeProvid
 
     public bool CanModify(int jobId, int actorUserId) => JobOwnership.CanModify(db, jobId, actorUserId);
 
-    public bool CanView(int jobId, int actorUserId) => JobOwnership.CanView(db, jobId, actorUserId);
+    public AccessRights GetRights(int jobId, int actorUserId) => JobOwnership.ForJob(db, jobId, actorUserId);
 
     /// <summary>
     /// Một chỗ duy nhất phát biểu luật "Admin hoặc người tạo tin". Trước đây luật này được
@@ -1471,15 +1637,8 @@ public class ProfileService(AppDbContext db, ICvStorage cvStorage, TimeProvider?
     /// Ưu tiên khóa, lùi về cột byte[] nếu hồ sơ chưa di trú — giữ đúng tinh thần fallback
     /// đang có ở endpoint tải CV của đơn.
     /// </summary>
-    public async Task<byte[]?> ReadCvAsync(CandidateProfile profile, CancellationToken ct = default)
-    {
-        if (profile.CvStorageKey is not null)
-        {
-            var fromStorage = await cvStorage.ReadAsync(profile.CvStorageKey, ct);
-            if (fromStorage is not null) return fromStorage;
-        }
-        return profile.CvData;
-    }
+    public Task<byte[]?> ReadCvAsync(CandidateProfile profile, CancellationToken ct = default) =>
+        cvStorage.ReadOrLegacyAsync(profile.CvStorageKey, profile.CvData, ct);
 }
 
 // =====================================================================
@@ -1550,27 +1709,14 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
         var a = db.Applications.Include(x => x.CandidateProfile).FirstOrDefault(x => x.Id == appId);
         if (a is null) return null;
 
-        // 1. Bản chụp trong blob storage — thứ đúng nhất: CV ĐÚNG như lúc ứng viên bấm nộp.
-        if (a.CvStorageKeySnapshot is not null)
-        {
-            var data = await cvStorage.ReadAsync(a.CvStorageKeySnapshot, ct);
-            if (data is not null) return (data, a.CvFileNameSnapshot, a.CvContentTypeSnapshot ?? "application/octet-stream");
-        }
+        // 1. Bản chụp lúc nộp (storage, rồi cột cũ) — CV ĐÚNG như lúc ứng viên bấm nộp.
+        if (await cvStorage.ReadOrLegacyAsync(a.CvStorageKeySnapshot, a.CvDataSnapshot, ct) is { } snapshot)
+            return (snapshot, a.CvFileNameSnapshot, a.CvContentTypeSnapshot ?? "application/octet-stream");
 
-        // 2. Bản chụp còn nằm ở cột cũ (đơn tạo trước khi di trú).
-        if (a.CvDataSnapshot is { Length: > 0 })
-            return (a.CvDataSnapshot, a.CvFileNameSnapshot, a.CvContentTypeSnapshot ?? "application/octet-stream");
-
-        // 3. Cuối cùng mới lùi về CV HIỆN TẠI của hồ sơ — dữ liệu từ trước khi có bản chụp.
+        // 2. Cuối cùng mới lùi về CV HIỆN TẠI của hồ sơ — dữ liệu từ trước khi có bản chụp.
         var p = a.CandidateProfile;
-        if (p is null) return null;
-        if (p.CvStorageKey is not null)
-        {
-            var data = await cvStorage.ReadAsync(p.CvStorageKey, ct);
-            if (data is not null) return (data, p.CvFileName ?? "CV", p.CvContentType ?? "application/octet-stream");
-        }
-        if (p.CvData is { Length: > 0 })
-            return (p.CvData, p.CvFileName ?? "CV", p.CvContentType ?? "application/octet-stream");
+        if (p is not null && await cvStorage.ReadOrLegacyAsync(p.CvStorageKey, p.CvData, ct) is { } current)
+            return (current, p.CvFileName ?? "CV", p.CvContentType ?? "application/octet-stream");
 
         return null;
     }
@@ -1583,6 +1729,24 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
     public List<ApplicantListItem> GetByJob(int jobId, string sort, ApplicantFilter? filter)
     {
         filter ??= new ApplicantFilter();
+        var list = Project(Sorted(Filtered(jobId, filter), sort)).ToList();
+
+        // Lọc tech làm SAU khi đã chiếu, ở phía C#. Chuẩn hóa của TechList (thường hóa,
+        // gộp khoảng trắng, "SQL  Server" == "sql server") không viết được thành LIKE, nên
+        // lọc trong SQL sẽ cho kết quả lệch với chính công thức mà phần chấm điểm dùng —
+        // hai chỗ cùng nói về "ứng viên có Docker" mà trả lời khác nhau. Danh sách ở đây là
+        // ứng viên của MỘT tin nên kích thước có trần. Lọc giữ nguyên thứ tự đã sắp trong SQL.
+        if (filter.RequiredTech is { Count: > 0 })
+        {
+            var wanted = filter.RequiredTech.Select(TechList.Normalize).ToHashSet();
+            list = list.Where(x => wanted.IsSubsetOf(TechList.NormalizedSet(x.TechSkillTags))).ToList();
+        }
+        return list;
+    }
+
+    /// <summary>Các tiêu chí lọc dịch được sang SQL (mọi thứ trừ Tech Stack).</summary>
+    private IQueryable<Application> Filtered(int jobId, ApplicantFilter filter)
+    {
         var q = db.Applications.AsNoTracking().Where(a => a.JobId == jobId);
 
         if (!string.IsNullOrWhiteSpace(filter.Status))
@@ -1597,21 +1761,6 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
         else if (filter.HasCv == false)
             q = q.Where(a => a.CvStorageKeySnapshot == null && a.CvDataSnapshot == null && a.CandidateProfile!.CvStorageKey == null && a.CandidateProfile.CvData == null);
 
-        // Lọc theo điểm chốt ngay trong SQL: (HrScore ?? AiScore) dịch thành COALESCE.
-        // Không lọc trên FinalScore — đó là property tính ở C#, EF không dịch được, và
-        // viết như vậy sẽ lặng lẽ kéo cả bảng về rồi mới lọc.
-        // Đơn chưa chấm có COALESCE = NULL nên tự rơi khỏi cả ba khoảng số; đó là lý do
-        // phải có khoảng "Chưa đánh giá" riêng.
-        q = filter.Band switch
-        {
-            ScoreBand.High => q.Where(a => (a.HrScore ?? a.AiScore) > ScoreThreshold.HighAbove),
-            ScoreBand.Mid => q.Where(a => (a.HrScore ?? a.AiScore) >= ScoreThreshold.MidFrom
-                                       && (a.HrScore ?? a.AiScore) <= ScoreThreshold.HighAbove),
-            ScoreBand.Low => q.Where(a => (a.HrScore ?? a.AiScore) < ScoreThreshold.MidFrom),
-            ScoreBand.Unscored => q.Where(a => a.HrScore == null && a.AiScore == null),
-            _ => q
-        };
-
         if (CandidateLevel.IsValid(filter.Level))
         {
             var (min, max) = CandidateLevel.YearRange(filter.Level);
@@ -1619,31 +1768,26 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
                           && a.CandidateProfile.YearsOfExperience <= max);
         }
 
-        var list = q.Select(a => new ApplicantListItem(
-                a.Id, a.CandidateProfile!.FullName, a.CandidateProfile.Email,
-                a.CandidateProfile.TechSkillTags, a.AiScore, a.HrScore, a.Status, a.AppliedAt,
-                a.CvStorageKeySnapshot != null || a.CvDataSnapshot != null || a.CandidateProfile.CvStorageKey != null || a.CandidateProfile.CvData != null,
-                a.CandidateProfile.YearsOfExperience, a.HrScoreByUserId))
-            .ToList();
-
-        // Lọc tech làm SAU khi đã chiếu, ở phía C#. Chuẩn hóa của TechList (thường hóa,
-        // gộp khoảng trắng, "SQL  Server" == "sql server") không viết được thành LIKE, nên
-        // lọc trong SQL sẽ cho kết quả lệch với chính công thức mà phần chấm điểm dùng —
-        // hai chỗ cùng nói về "ứng viên có Docker" mà trả lời khác nhau. Danh sách ở đây là
-        // ứng viên của MỘT tin nên kích thước có trần.
-        if (filter.RequiredTech is { Count: > 0 })
-        {
-            var wanted = filter.RequiredTech.Select(TechList.Normalize).ToHashSet();
-            list = list.Where(x => wanted.IsSubsetOf(TechList.NormalizedSet(x.TechSkillTags))).ToList();
-        }
-
-        return Sort(list, sort);
+        return q;
     }
 
-    private static List<ApplicantListItem> Sort(List<ApplicantListItem> list, string sort) =>
+    /// <summary>
+    /// Sắp trong SQL. Id là khóa phụ CUỐI CÙNG để thứ tự ổn định giữa các trang: hai đơn
+    /// trùng AppliedAt (và trùng điểm) mà không có khóa phụ thì thứ tự do SQL Server tự
+    /// quyết và đổi giữa hai request — chuyển trang sẽ thấy trùng một người hoặc mất một người.
+    /// </summary>
+    private static IQueryable<Application> Sorted(IQueryable<Application> q, string sort) =>
         sort == "score"
-            ? list.OrderByDescending(x => x.FinalScore ?? -1).ThenByDescending(x => x.AppliedAt).ToList()
-            : list.OrderByDescending(x => x.AppliedAt).ToList();
+            ? q.OrderByDescending(a => a.HrScore ?? a.AiScore ?? -1).ThenByDescending(a => a.AppliedAt).ThenByDescending(a => a.Id)
+            : q.OrderByDescending(a => a.AppliedAt).ThenByDescending(a => a.Id);
+
+    // Bản chiếu — KHÔNG kéo byte[] CV về: so cột blob với null dịch thành IS NOT NULL.
+    private static IQueryable<ApplicantListItem> Project(IQueryable<Application> q) =>
+        q.Select(a => new ApplicantListItem(
+            a.Id, a.CandidateProfile!.FullName, a.CandidateProfile.Email,
+            a.CandidateProfile.TechSkillTags, a.AiScore, a.HrScore, a.Status, a.AppliedAt,
+            a.CvStorageKeySnapshot != null || a.CvDataSnapshot != null || a.CandidateProfile.CvStorageKey != null || a.CandidateProfile.CvData != null,
+            a.CandidateProfile.YearsOfExperience, a.HrScoreByUserId));
 
     // =====================================================================
     //  P2-1: phân trang.
@@ -1662,16 +1806,21 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
         pageSize = Math.Clamp(pageSize, 5, 200);
         filter ??= new ApplicantFilter();
 
-        var all = GetByJob(jobId, sort, filter);
-        var total = all.Count;
+        // Có lọc tech: phải lọc xong ở C# rồi mới cắt trang (xem chú thích ở đầu mục).
+        if (filter.RequiredTech is { Count: > 0 })
+        {
+            var all = GetByJob(jobId, sort, filter);
+            page = Paging.Clamp(page, all.Count, pageSize);
+            return new ApplicantPage(all.Skip((page - 1) * pageSize).Take(pageSize).ToList(), all.Count, page, pageSize);
+        }
 
-        // Kẹp cả hai đầu, không chỉ trần dưới: bài học đã ghi trong AuditService — ?p=9999
-        // trên 3 trang dữ liệu từng cho ra bảng rỗng kèm dòng "Trang 9999 / 3" và không có
-        // nút nào quay lại được.
-        var lastPage = total == 0 ? 1 : (int)Math.Ceiling((double)total / pageSize);
-        page = Math.Clamp(page, 1, lastPage);
-
-        var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        // Không lọc tech: COUNT + OFFSET/FETCH trong SQL, chỉ nạp ĐÚNG một trang. Nạp cả
+        // bảng rồi Skip/Take ở C# nghĩa là mỗi lần bấm sang trang kéo về toàn bộ ứng viên
+        // của tin — phân trang mất sạch tác dụng trong khi giao diện vẫn hiện thanh trang.
+        var q = Filtered(jobId, filter);
+        var total = q.Count();
+        page = Paging.Clamp(page, total, pageSize);
+        var items = Project(Sorted(q, sort)).Skip((page - 1) * pageSize).Take(pageSize).ToList();
         return new ApplicantPage(items, total, page, pageSize);
     }
 
@@ -1923,21 +2072,16 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
                        .Select(a => new { a.JobId, a.Status })
                        .ToDictionary(x => x.JobId, x => x.Status);
 
-    // #5: Mentor chỉ được xem/thao tác đơn thuộc tin do mình tạo; Admin xem tất cả
-    public bool CanModify(int appId, int actorUserId)
-    {
-        var jobId = db.Applications.Where(a => a.Id == appId).Select(a => (int?)a.JobId).FirstOrDefault();
-        return jobId is not null && JobOwnership.CanModify(db, jobId.Value, actorUserId);
-    }
+    // #5: Mentor chỉ được xem/thao tác đơn thuộc tin do mình tạo; Admin xem tất cả.
+    //
+    // Vai trò đọc từ CSDL chứ KHÔNG nhận từ người gọi: cookie đăng nhập sống tới 8 tiếng,
+    // nên một cờ isAdmin lấy từ claim biến luật này thành thứ chỉ đúng chừng nào mọi đường
+    // đổi vai trò đều nhớ tăng SecurityStamp. Đơn không tồn tại → cả hai quyền đều false.
+    public bool CanModify(int appId, int actorUserId) => GetRights(appId, actorUserId).CanModify;
 
-    public bool CanAccess(int appId, int actorUserId, bool isAdmin)
-    {
-        if (isAdmin) return true;
-        var ownerId = db.Applications.Where(a => a.Id == appId)
-                                     .Select(a => (int?)a.Job!.CreatedById)
-                                     .FirstOrDefault();
-        return ownerId is not null && ownerId == actorUserId;
-    }
+    public bool CanAccess(int appId, int actorUserId) => GetRights(appId, actorUserId).CanView;
+
+    public AccessRights GetRights(int appId, int actorUserId) => JobOwnership.ForApplication(db, appId, actorUserId);
 
     // ATS-13/14: lưu kết quả đánh giá — không đụng HrScore
     public void SaveAiEvaluation(int appId, AiEvaluation eval)
@@ -1948,10 +2092,10 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
         // Cắt đúng giới hạn cột (nvarchar(1000)). Ba trường này đến từ một mô hình ngoài:
         // không có gì buộc Gemini trả về dưới 1000 ký tự, và trên SQL Server thì vượt cột
         // là một lần ghi HỎNG — đơn mất luôn kết quả vừa chấm — chứ không phải chuỗi bị cắt.
-        a.AiStrengths = Clip(eval.Strengths, 1000);
-        a.AiMissing = Clip(eval.Missing, 1000);
-        a.AiRoadmap = Clip(eval.Roadmap, 1000);
-        a.AiSource = Clip(eval.Source, 20);      // Gemini hay Offline — hiển thị cho Mentor biết
+        a.AiStrengths = TextLimits.Clip(eval.Strengths, 1000);
+        a.AiMissing = TextLimits.Clip(eval.Missing, 1000);
+        a.AiRoadmap = TextLimits.Clip(eval.Roadmap, 1000);
+        a.AiSource = TextLimits.Clip(eval.Source, 20);      // Gemini hay Offline — hiển thị cho Mentor biết
         a.AiScoredAt = UtcNow;
         db.SaveChanges();
     }
@@ -2046,8 +2190,8 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
             if (newStatus == ApplicationStatus.Interview && schedule is not null)
             {
                 a.InterviewAt = schedule.At;
-                a.InterviewLink = Clip(schedule.Link, 400);
-                a.InterviewNote = Clip(schedule.Note, 500);
+                a.InterviewLink = TextLimits.Clip(schedule.Link, 400);
+                a.InterviewNote = TextLimits.Clip(schedule.Note, 500);
                 // P1-3: mỗi lần đặt hoặc đổi lịch là một phiên bản mới của CÙNG một sự kiện lịch.
                 a.InterviewSequence++;
                 changed.AddRange(new[]
@@ -2062,7 +2206,7 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
             // hồi đã soạn, hoặc tệ hơn là gắn một lời từ chối vào đơn đang được mời phỏng vấn.
             if (newStatus == ApplicationStatus.Rejected)
             {
-                a.CandidateFeedback = Clip(candidateFeedback, 1000);
+                a.CandidateFeedback = TextLimits.Clip(candidateFeedback, 1000);
                 changed.Add(nameof(Application.CandidateFeedback));
             }
 
@@ -2304,23 +2448,15 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
         Uri.TryCreate(link.Trim(), UriKind.Absolute, out var uri)
         && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
-    /// <summary>Cắt đúng giới hạn cột; chuỗi rỗng lưu thành null để phân biệt "không có" với "có mà trống".</summary>
-    private static string? Clip(string? value, int max)
-    {
-        var s = value?.Trim();
-        if (string.IsNullOrEmpty(s)) return null;
-        return s.Length > max ? s[..max] : s;
-    }
-
     // ===== N1.C: bộ câu hỏi phỏng vấn =====
     // Lưu JSON trong một cột chứ không tách bảng riêng: bộ câu hỏi luôn được đọc và ghi
     // trọn gói theo đơn, không bao giờ truy vấn hay sắp xếp theo từng câu.
     private const int QuestionsColumnLimit = 4000;
 
-    public void SaveAiQuestions(int appId, InterviewQuestionSet set)
+    public bool SaveAiQuestions(int appId, InterviewQuestionSet set)
     {
         var a = db.Applications.Find(appId);
-        if (a is null || !set.HasQuestions) return;
+        if (a is null || !set.HasQuestions) return false;
 
         // Bỏ bớt câu cuối cho tới khi vừa cột, thay vì để chuỗi JSON bị cắt ngang —
         // chuỗi cắt ngang đọc lại sẽ ném JsonException chứ không hỏng một cách im lặng.
@@ -2331,7 +2467,7 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
             items.RemoveAt(items.Count - 1);
             json = JsonSerializer.Serialize(items);
         }
-        if (json.Length > QuestionsColumnLimit) return;   // một câu mà vẫn quá dài: không lưu còn hơn lưu hỏng
+        if (json.Length > QuestionsColumnLimit) return false;   // một câu mà vẫn quá dài: không lưu còn hơn lưu hỏng
 
         a.AiQuestions = json;
         a.AiQuestionsSource = set.Source;
@@ -2346,6 +2482,7 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
             CreatedAt = UtcNow
         });
         db.SaveChanges();
+        return true;
     }
 
     public InterviewQuestionSet? GetAiQuestions(int appId)
@@ -2354,44 +2491,50 @@ public class ApplicationService(AppDbContext db, INotificationService notify, IC
             .Where(a => a.Id == appId && a.AiQuestions != null)
             .Select(a => new { a.AiQuestions, a.AiQuestionsSource })
             .FirstOrDefault();
-        if (row?.AiQuestions is null) return null;
+        return ParseQuestions(row?.AiQuestions, row?.AiQuestionsSource);
+    }
 
+    /// <summary>
+    /// Đọc cột JSON thành bộ câu hỏi. Dữ liệu cũ hoặc bị sửa tay trong CSDL: coi như CHƯA CÓ
+    /// để người dùng sinh lại, thay vì để cả trang đổ lỗi 500 vì một cột hỏng.
+    /// Một chỗ duy nhất đọc định dạng này — bộ hiện tại và mọi bản trong lịch sử.
+    /// </summary>
+    internal static InterviewQuestionSet? ParseQuestions(string? json, string? source)
+    {
+        if (json is null) return null;
         try
         {
-            var items = JsonSerializer.Deserialize<List<InterviewQuestion>>(row.AiQuestions);
+            var items = JsonSerializer.Deserialize<List<InterviewQuestion>>(json);
             return items is null || items.Count == 0
                 ? null
-                : new InterviewQuestionSet(items, row.AiQuestionsSource ?? EvaluationSource.Offline);
+                : new InterviewQuestionSet(items, source ?? EvaluationSource.Offline);
         }
         catch (JsonException)
         {
-            // Dữ liệu cũ hoặc bị sửa tay trong CSDL: coi như chưa có để Mentor sinh lại,
-            // thay vì để cả trang chi tiết ứng viên đổ lỗi 500 vì một cột hỏng.
             return null;
         }
     }
 
-    // HIST: toàn bộ lịch sử bộ câu hỏi đã sinh cho đơn, mới nhất trước.
-    public List<InterviewQuestionSet> GetAiQuestionHistory(int appId)
+    // HIST: lịch sử bộ câu hỏi đã sinh cho đơn, mới nhất trước.
+    //
+    // skip/take dịch thành OFFSET/FETCH. Không có trần thì sau vài chục lần tạo lại, MỖI lần
+    // mở trang đơn kéo về hàng trăm KB JSON và dựng ngần ấy bộ câu hỏi vào thân trang HTML —
+    // cho một khung <details> hầu như không ai mở.
+    public List<InterviewQuestionSet> GetAiQuestionHistory(int appId, int skip = 0,
+        int take = InterviewQuestionSnapshot.HistoryLimit)
     {
         var rows = db.InterviewQuestionSnapshots.AsNoTracking()
             .Where(x => x.ApplicationId == appId)
             .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
             .Select(x => new { x.QuestionsJson, x.Source })
+            .Skip(Math.Max(skip, 0)).Take(Math.Clamp(take, 1, InterviewQuestionSnapshot.HistoryLimit))
             .ToList();
 
-        var result = new List<InterviewQuestionSet>();
-        foreach (var r in rows)
-        {
-            try
-            {
-                var items = JsonSerializer.Deserialize<List<InterviewQuestion>>(r.QuestionsJson);
-                if (items is { Count: > 0 })
-                    result.Add(new InterviewQuestionSet(items, r.Source ?? EvaluationSource.Offline));
-            }
-            catch (JsonException) { /* bỏ qua bản hỏng, không làm gãy cả danh sách */ }
-        }
-        return result;
+        // Bản hỏng bị bỏ qua chứ không làm gãy cả danh sách — ParseQuestions trả null cho nó.
+        return rows.Select(r => ParseQuestions(r.QuestionsJson, r.Source))
+                   .Where(x => x is not null)
+                   .Select(x => x!)
+                   .ToList();
     }
 
     public List<ApplicationStatusHistory> GetStatusHistory(int appId) =>
@@ -2459,21 +2602,25 @@ public class NotificationService(AppDbContext db) : INotificationService
             // Cắt đúng giới hạn cột. Từ N1.E, nội dung thông báo có thể mang tên tin (tối đa
             // 160 ký tự) kèm link họp (tối đa 400) — vượt 500 mà không cần ai cố ý, và trên
             // SQL Server thì đó là một lần ghi hỏng chứ không phải một chuỗi bị cắt.
-            Title = Cut(title, 160),
-            Message = Cut(message, 500),
-            Link = Cut(link, 250),
+            Title = TextLimits.Cut(title, 160),
+            Message = TextLimits.Cut(message, 500),
+            Link = TextLimits.Cut(link, 250),
             IsRead = false
             // CreatedAt do AppDbContext đóng dấu tập trung (UTC) — P0-2.
         });
         db.SaveChanges();
     }
 
-    private static string Cut(string s, int max) => s.Length <= max ? s : s[..max];
-
     public List<Notification> GetForUser(int userId, int take = 20) =>
         db.Notifications.AsNoTracking()
                         .Where(n => n.UserId == userId)
                         .OrderByDescending(n => n.CreatedAt).Take(take).ToList();
+
+    public NotificationBell GetBell(int userId, int take = 20)
+    {
+        var items = GetForUser(userId, take);
+        return new NotificationBell(items, items.Count < take ? items.Count(n => !n.IsRead) : CountUnread(userId));
+    }
 
     public int CountUnread(int userId) =>
         db.Notifications.Count(n => n.UserId == userId && !n.IsRead);

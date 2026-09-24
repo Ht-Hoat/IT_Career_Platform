@@ -1,8 +1,6 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using ITCareerPlatform.Models;
 using ITCareerPlatform.Services;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -16,20 +14,11 @@ namespace ITCareerPlatform.Tests;
 /// </summary>
 public class HttpRecruitmentFlowTests(AppFactory app) : IClassFixture<AppFactory>
 {
-    private static readonly Regex TokenInput = new(@"name=""__RequestVerificationToken""[^>]*value=""(?<t>[^""]+)""");
+    private Task<HttpClient> LoginAs(string email) => app.LoginAs(email);
 
-    private async Task<HttpClient> LoginAs(string email)
-    {
-        var client = app.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var res = await client.PostAsync("/account/login", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["email"] = email, ["password"] = "123456"
-        }));
-        Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
-        return client;
-    }
-
-    private static string Token(string html) => WebUtility.HtmlDecode(TokenInput.Match(html).Groups["t"].Value);
+    // Bản dùng chung của AppFactory: nó Assert khi trang KHÔNG có ô token, thay vì lặng lẽ trả
+    // chuỗi rỗng rồi để lần POST hỏng vì "antiforgery" mà không nói ra nguyên nhân thật.
+    private static string Token(string html) => AppFactory.TokenIn(html);
 
     [Fact]
     public async Task MentorInvites_ThenStudentPreparesWithTheirOwnQuestions()

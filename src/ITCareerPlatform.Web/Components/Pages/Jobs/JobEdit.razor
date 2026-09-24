@@ -2,7 +2,6 @@
 @* Chỉ Mentor đăng/sửa tin — Admin chỉ xem danh sách. *@
 @attribute [Authorize(Roles = Roles.Mentor)]
 @inject IJobService Jobs
-@inject ICompanyService Companies
 
 @* Sửa tin việc IT *@
 
@@ -20,7 +19,7 @@ else
     }
 
     <form method="post" action="@($"/jobs/{model.Id}/update")" class="form form-wide" data-vi-validate>
-        <AntiforgeryField />
+        <AntiforgeryToken />
         <JobFields Model="model" CompanyName="@companyName" />
         <div class="actions">
             <button class="btn-primary" type="submit" disabled="@(model.Status == JobStatus.Closed)">Lưu thay đổi</button>
@@ -32,14 +31,21 @@ else
 @code {
     [Parameter] public int JobId { get; set; }
     [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
     private Job? model;
     private string? companyName;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        model = Jobs.GetById(JobId);
-        // Công ty của TIN, không phải của người đang sửa: Admin sửa tin của Mentor khác thì
-        // dải chỉ-đọc phải nói đúng công ty mà tin đang đứng tên.
-        if (model is not null) companyName = Companies.GetById(model.CompanyId)?.Name;
+        if (AuthState is null) return;
+
+        // GetForEdit trả null cho Mentor không phải chủ tin, nên tin của người khác và tin
+        // không tồn tại cho ra CÙNG một trang. [Authorize(Roles = Mentor)] chỉ nói "được vào
+        // trang này", không nói "được sửa tin NÀY" — thiếu bước này thì gõ thẳng
+        // /jobs/edit/{id} là đọc được JD, lương và công ty của tin do Mentor khác đăng.
+        model = Jobs.GetForEdit(JobId, CurrentUser.Id((await AuthState).User));
+
+        // Công ty của TIN, không phải của người đang sửa — đi kèm sẵn trong cùng truy vấn.
+        companyName = model?.Company?.Name;
     }
 }
