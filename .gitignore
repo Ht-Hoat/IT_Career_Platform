@@ -6,3 +6,8 @@ obj/
 # KHÔNG commit API key và cấu hình dev cục bộ
 appsettings.Development.json
 TestResults/
+
+# CV do ứng viên tải lên, lưu trên đĩa theo CvStorage:RootPath (mặc định App_Data/cv).
+# Đây là dữ liệu cá nhân THẬT: chạy app một lần rồi `git add -A` là commit CV người dùng
+# vào repo, và lịch sử git thì không xóa lại được.
+App_Data/
