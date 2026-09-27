@@ -38,7 +38,7 @@ public class InterviewPrepServiceTests
         var (ok, msg) = await svc.GenerateAsync(app.Id, owner.UserId);
 
         Assert.True(ok, msg);
-        var set = svc.Get(app.Id, owner.UserId);
+        var set = svc.GetState(app.Id, owner.UserId)?.Questions;
         Assert.NotNull(set);
         Assert.NotEmpty(set!.Items);
         // Gợi ý viết CHO sinh viên, không còn là ghi chú chấm điểm cho người phỏng vấn.
@@ -75,8 +75,8 @@ public class InterviewPrepServiceTests
 
         Assert.False(ok);
         Assert.Equal("Không tìm thấy đơn.", msg);
-        Assert.Null(svc.Get(app.Id, other.UserId));
-        Assert.NotNull(svc.Get(app.Id, owner.UserId));
+        Assert.Null(svc.GetState(app.Id, other.UserId));                    // đơn của người khác
+        Assert.NotNull(svc.GetState(app.Id, owner.UserId)!.Questions);       // chủ đơn thì có
     }
 
     [Fact]

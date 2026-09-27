@@ -138,7 +138,7 @@ public class ApplicationServiceTests
         using var t = new TestDb();
         var owner = t.AddUser("Owner", "o@itcp.vn", Roles.MentorId);
         var other = t.AddUser("Other", "x@itcp.vn", Roles.MentorId);
-        var admin = t.AddUser("Admin", "a@itcp.vn", Roles.AdminId);
+        var admin = t.AddUser("Admin", "ad@itcp.vn", Roles.AdminId);
         var sv = t.AddUser("SV", "sv@itcp.vn", Roles.StudentId);
         t.AddProfile(sv.Id);
         var job = t.AddJob(owner.Id);
@@ -148,7 +148,13 @@ public class ApplicationServiceTests
 
         Assert.True(svc.CanAccess(appId, owner.Id));    // chủ tin → OK
         Assert.False(svc.CanAccess(appId, other.Id));   // mentor khác → chặn
-        Assert.True(svc.CanAccess(appId, admin.Id));    // admin → OK (vai trò đọc từ CSDL)
+        // Vai trò Admin đọc từ CSDL, không phải từ một cờ người gọi truyền vào: hạ vai trò
+        // có hiệu lực ngay thay vì đợi cookie 8 tiếng hết hạn.
+        Assert.True(svc.CanAccess(appId, admin.Id));
+
+        // Đơn KHÔNG TỒN TẠI: không ai có quyền, kể cả Admin. Bản cũ thoát sớm theo cờ
+        // isAdmin nên trả true cho một id chẳng có thật.
+        Assert.False(svc.CanAccess(appId + 99_999, admin.Id));
     }
 
     // Kịch bản 5: ứng tuyển trùng

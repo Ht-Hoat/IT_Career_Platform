@@ -17,7 +17,7 @@
 
 <table class="tbl">
     <thead>
-        <tr><th>ID</th><th>Vị trí</th><th>Danh mục</th><th>Tech Stack</th><th>Cấp bậc</th><th>Hạn nộp</th><th>Số SV</th><th>Trạng thái</th><th>Thao tác</th></tr>
+        <tr><th>Ngày tạo</th><th>Vị trí</th><th>Danh mục</th><th>Tech Stack</th><th>Cấp bậc</th><th>Hạn nộp</th><th>Số SV</th><th>Trạng thái</th><th>Ứng viên / JD</th></tr>
     </thead>
     <tbody>
         @foreach (var j in jobs)
@@ -25,8 +25,16 @@
             @* P1-5: Mentor chỉ thấy tin của mình nên thao tác được mọi dòng. Admin thấy tất
                cả nhưng CHỈ XEM — nút thao tác bị ẩn, và endpoint/service cũng chặn. *@
             <tr>
-                <td>@j.Id</td>
-                <td>@j.Title</td>
+                <td>@Ui.DateText(j.CreatedAt)</td>
+                <td>
+                    <div><b>@j.Title</b></div>
+                    @if (isAdmin)
+                    {
+                        <span class="sub" style="font-size:12px;color:#64748b;display:block;">
+                            @(j.CreatedBy != null ? $"👤 {j.CreatedBy.FullName} · Chỉ xem" : "👤 Chỉ xem")
+                        </span>
+                    }
+                </td>
                 <td><span class="@Ui.CategoryClass(j.Category)">@j.Category</span></td>
                 <td>
                     @{ var tags = j.TechStackList; }
@@ -44,6 +52,7 @@
                     @* Ba nút cùng một hàng, cùng cỡ. Tin đã đóng không hiện nút "Sửa" mờ nữa — nút
                        "Mở lại" đã nói rõ bước cần làm, và service vẫn chặn sửa tin đã đóng. *@
                     <div class="row-actions">
+                        <a class="btn-sm ghost" href="@($"/jobs/{j.Id}/detail")" title="Xem chi tiết JD">Xem JD</a>
                         <a class="btn-sm" href="@($"/jobs/{j.Id}/applicants")">Ứng viên</a>
                         @* Admin chỉ xem: không có nút Sửa / Đóng / Mở lại. *@
                         @if (!isAdmin && j.Status == JobStatus.Open)
@@ -90,6 +99,8 @@
         // thông tin cạnh tranh, vừa hiện sẵn nút "Ứng viên" dẫn tới một trang báo không có
         // quyền. Kiểm tra quyền ở service vẫn là lớp bảo vệ thật; thay đổi này chỉ để giao
         // diện thôi mời người dùng bấm vào thứ họ không được phép.
+        // Thứ tự (mới nhất trước, Id làm khóa phụ) do service sắp trong SQL — sắp lại ở đây chỉ
+        // tốn một lần duyệt cả danh sách cho đúng kết quả đã có, và bỏ mất khóa phụ theo Id.
         jobs = isAdmin ? Jobs.GetAll() : Jobs.GetByOwner(uid);
         // Đếm theo đúng những tin đang hiển thị thay vì gộp cả bảng Applications.
         counts = Applications.CountForJobs(jobs.Select(j => j.Id).ToList());

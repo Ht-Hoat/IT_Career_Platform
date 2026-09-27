@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject INotificationService Notifs
+@inject IUserService Users
 
 <div class="app">
     <aside class="sidebar">
@@ -11,6 +12,7 @@
 
                     <AuthorizeView Roles="@Roles.Admin" Context="a">
                         <a href="/users">Quản lý tài khoản</a>
+                        <a href="/users/pending">Duyệt tài khoản HR @if (pendingCount > 0) { <span class="badge" style="background:#dc2626;color:#fff;padding:2px 6px;border-radius:10px;font-size:11px;font-weight:700;margin-left:4px;">@pendingCount</span> }</a>
                         <a href="/companies">Quản lý công ty</a>
                         <a href="/audit">Nhật ký hệ thống</a>
                     </AuthorizeView>
@@ -101,6 +103,7 @@
     private string roleName = "";
     private bool showBell;
     private int unread;
+    private int pendingCount;
     private List<Notification> items = new();
     private const int BellSize = 8;
 
@@ -112,15 +115,21 @@
         var user = (await AuthState).User;
         roleName = CurrentUser.RoleName(user);
 
+        // COUNT(*), không phải GetPending().Count: layout render trên MỌI trang của Admin
+        // và chỉ cần con số, trong khi GetPending nạp cả hàng chờ kèm hai bảng JOIN.
+        if (CurrentUser.IsAdmin(user))
+            pendingCount = Users.CountPending();
+
         var uid = CurrentUser.Id(user);
         // P0-4: Bật chuông thông báo cho mọi vai trò đã đăng nhập (để Mentor nhận thông báo khi SV rút đơn)
         showBell = user.Identity?.IsAuthenticated == true && uid > 0;
         if (!showBell) return;
 
-        items = Notifs.GetForUser(uid, BellSize);
-        // Lấy chưa đủ BellSize nghĩa là đã có TẤT CẢ thông báo trong tay — đếm luôn ở đây thay
-        // vì thêm một câu COUNT. Layout render trên mọi trang, nên một truy vấn là đáng kể.
-        unread = items.Count < BellSize ? items.Count(n => !n.IsRead) : Notifs.CountUnread(uid);
+        // Danh sách và số chưa đọc trong MỘT lời gọi: service tự quyết khi nào đếm được tại
+        // chỗ và khi nào cần thêm một câu COUNT, nên "chưa đọc" chỉ có một định nghĩa.
+        var bell = Notifs.GetBell(uid, BellSize);
+        items = bell.Items;
+        unread = bell.Unread;
     }
 
     /// <summary>Hai chữ cái đầu cho ô avatar: "Phạm Thị Lan" → "PL" (chữ đầu của họ và của tên).</summary>

@@ -195,7 +195,39 @@ public static class Ui
     /// <summary>Hiển thị khoảng lương, tránh "0–0 tr" khi chưa nhập.</summary>
     public static string SalaryText(decimal min, decimal max) =>
         min <= 0 && max <= 0 ? "Thỏa thuận" : $"{min:0.##}–{max:0.##} tr";
+
+    /// <summary>Số ngày từ hôm nay (lịch Việt Nam) tới hạn nộp; ÂM nghĩa là đã quá hạn.</summary>
+    public static int DaysUntilDeadline(DateTime deadline) =>
+        (deadline.Date - VietnamDateHelper.Today()).Days;
+
+    /// <summary>Hạn nộp cần tô đỏ — sắp tới hoặc đã qua.</summary>
+    public static bool DeadlineIsHot(DateTime deadline) => DaysUntilDeadline(deadline) <= 7;
+
+    /// <summary>
+    /// Ghi chú đi kèm hạn nộp: "(còn 3 ngày)" khi sắp tới, "(đã hết hạn)" khi đã qua, rỗng khi còn xa.
+    ///
+    /// Ở ĐÂY chứ không ở từng trang: hai trang của sinh viên chỉ thấy tin CÒN nhận hồ sơ nên số
+    /// ngày luôn dương, còn trang chi tiết của Admin/Mentor thấy cả tin đã đóng và đã hết hạn —
+    /// cùng một dòng chép sang đó in ra "(còn -12 ngày)".
+    /// </summary>
+    public static string DeadlineNote(DateTime deadline)
+    {
+        var days = DaysUntilDeadline(deadline);
+        if (days < 0) return " (đã hết hạn)";
+        return days <= 7 ? $" (còn {days} ngày)" : "";
+    }
 }
+
+/// <summary>
+/// P0-3: đánh dấu những đường ĐI ĐƯỢC khi tài khoản đang bị buộc đổi mật khẩu.
+///
+/// Đặt trên chính route thay vì liệt kê đường dẫn trong middleware — cùng bài học với
+/// kiểm tra chống giả mạo: một mảng chuỗi chép tay là nguồn sự thật THỨ HAI, đổi tên route
+/// mà quên sửa nó thì người dùng bị kẹt trong vòng chuyển hướng không lối ra, còn
+/// StartsWithSegments thì khớp theo tiền tố nên "/change-password-help" cũng lọt.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+public sealed class AllowWithExpiredPasswordAttribute : Attribute;
 
 /// <summary>
 /// Đọc danh tính người đang đăng nhập từ ClaimsPrincipal.
@@ -213,6 +245,8 @@ public static class CurrentUser
         user?.FindFirstValue(ClaimTypes.Role) ?? "";
 
     public static bool IsAdmin(ClaimsPrincipal? user) => user?.IsInRole(Roles.Admin) ?? false;
+
+    public static bool IsStudent(ClaimsPrincipal? user) => user?.IsInRole(Roles.Student) ?? false;
 }
 
 /// <summary>

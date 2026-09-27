@@ -16,6 +16,8 @@ public class PageFormsHaveEndpointsTests
     private static readonly Regex ActionAttr = new(@"\baction\s*=\s*""(?<v>(?:@\(\$""[^""]*""\))|[^""]*)""", RegexOptions.IgnoreCase);
     private static readonly Regex MapPost = new(@"app\.MapPost\(\s*""(?<route>[^""]+)""");
     private static readonly Regex RouteParam = new(@"\{[^}]*\}");
+    /// <summary>@page "/jobs/edit/{JobId:int}" — trang nhận một id trên URL.</summary>
+    private static readonly Regex IdRoute = new(@"^@page\s+""[^""]*\{[^}]*:int\}", RegexOptions.Multiline);
 
     private static string WebProjectDir()
     {
@@ -65,12 +67,12 @@ public class PageFormsHaveEndpointsTests
 
     /// <summary>
     /// Mỗi form POST phải mang token chống giả mạo BÊN TRONG chính nó. Đếm số lượng trong cả
-    /// tệp là không đủ: nút Đăng xuất từng có ô token nằm ngay SAU &lt;/form&gt; —
+    /// tệp là không đủ: nút Đăng xuất từng có &lt;AntiforgeryToken /&gt; nằm ngay SAU &lt;/form&gt; —
     /// số lượng vẫn khớp, nhưng form gửi đi không có token và middleware chặn lại, tức là
     /// không đăng xuất được.
     /// </summary>
     [Fact]
-    public void EveryPostForm_CarriesItsOwnAntiforgeryField()
+    public void EveryPostForm_CarriesItsOwnAntiforgeryToken()
     {
         var missing = new List<string>();
         foreach (var file in Directory.EnumerateFiles(Path.Combine(WebProjectDir(), "Components"), "*.razor", SearchOption.AllDirectories))
@@ -86,6 +88,41 @@ public class PageFormsHaveEndpointsTests
             }
         }
         Assert.True(missing.Count == 0, "Form POST không mang token bên trong:\n" + string.Join("\n", missing));
+    }
+
+    /// <summary>
+    /// Trang nhận một id trên URL thì PHẢI đọc dữ liệu qua một đường có kiểm quyền.
+    ///
+    /// Đây là lỗi đã xảy ra HAI lần: /jobs/{id}/detail và /jobs/edit/{id} đều khai
+    /// [Authorize(Roles = ...)] rồi gọi thẳng Jobs.GetById, và câu [Authorize] chỉ nói "được
+    /// vào trang này" chứ không nói "được xem tin NÀY" — bất kỳ Mentor nào gõ URL cũng đọc
+    /// được JD, lương và số ứng viên của tin do người khác đăng.
+    ///
+    /// Cách chặn ĐÚNG là hàm đọc tự trả null cho người không có quyền (GetForEdit,
+    /// GetDetailForViewer, GetForCandidate, GetVisibleForCandidate). Hỏi quyền rời bằng
+    /// GetRights/CanView/CanModify cũng được chấp nhận. Test này bắt trang thứ bảy quên làm
+    /// một trong hai, thay vì đợi một vòng review nữa tìm ra.
+    /// </summary>
+    [Fact]
+    public void EveryPageTakingAnIdRoute_ReadsThroughAnAuthorizedPath()
+    {
+        string[] authorizedReads =
+        {
+            "GetForEdit", "GetDetailForViewer", "GetForCandidate", "GetVisibleForCandidate",
+            "GetRights", "CanView", "CanModify", "CanAccess"
+        };
+
+        var offenders = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(WebProjectDir(), "Components", "Pages"), "*.razor", SearchOption.AllDirectories))
+        {
+            var text = File.ReadAllText(file);
+            if (!IdRoute.IsMatch(text)) continue;
+            if (!authorizedReads.Any(text.Contains))
+                offenders.Add(Path.GetFileName(file));
+        }
+
+        Assert.True(offenders.Count == 0,
+            "Trang nhận id trên URL nhưng không đọc qua đường có kiểm quyền:\n" + string.Join("\n", offenders));
     }
 
     /// <summary>Chính hai đường đã từng bị xóa nhầm — khóa riêng để thông báo lỗi nói thẳng vào chuyện.</summary>

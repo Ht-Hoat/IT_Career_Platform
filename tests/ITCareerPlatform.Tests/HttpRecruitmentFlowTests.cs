@@ -14,6 +14,12 @@ namespace ITCareerPlatform.Tests;
 /// </summary>
 public class HttpRecruitmentFlowTests(AppFactory app) : IClassFixture<AppFactory>
 {
+    private Task<HttpClient> LoginAs(string email) => app.LoginAs(email);
+
+    // Bản dùng chung của AppFactory: nó Assert khi trang KHÔNG có ô token, thay vì lặng lẽ trả
+    // chuỗi rỗng rồi để lần POST hỏng vì "antiforgery" mà không nói ra nguyên nhân thật.
+    private static string Token(string html) => AppFactory.TokenIn(html);
+
     [Fact]
     public async Task MentorInvites_ThenStudentPreparesWithTheirOwnQuestions()
     {
@@ -22,7 +28,7 @@ public class HttpRecruitmentFlowTests(AppFactory app) : IClassFixture<AppFactory
             .Single(a => a.Job!.Title == "Lập trình viên Backend .NET" && a.CandidateProfile!.Email == "lan@itcp.vn").Id);
 
         // --- Mentor: trang chi tiết là các thẻ quyết định, không còn chốt điểm / ghi chú / câu hỏi ---
-        var mentor = await app.LoginAs("mentor@itcp.vn");
+        var mentor = await LoginAs("mentor@itcp.vn");
         var hrHtml = await mentor.GetStringAsync($"/applications/{appId}");
         var hrText = WebUtility.HtmlDecode(hrHtml);
         Assert.Contains("Quyết định tuyển dụng", hrText);
@@ -37,7 +43,7 @@ public class HttpRecruitmentFlowTests(AppFactory app) : IClassFixture<AppFactory
         var vnTomorrow = Ui.ToVietnamTime(DateTime.UtcNow.AddDays(1)).ToString("yyyy-MM-ddTHH:mm");
         var invite = await mentor.PostAsync($"/applications/{appId}/status", new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            ["__RequestVerificationToken"] = AppFactory.TokenIn(hrHtml),
+            ["__RequestVerificationToken"] = Token(hrHtml),
             ["status"] = ApplicationStatus.Interview,
             ["interviewAt"] = vnTomorrow,
             ["interviewLink"] = "https://meet.google.com/abc-defg-hij",
@@ -47,14 +53,14 @@ public class HttpRecruitmentFlowTests(AppFactory app) : IClassFixture<AppFactory
         Assert.Equal(ApplicationStatus.Interview, app.Query(db => db.Applications.Find(appId)!.Status));
 
         // --- Sinh viên: thấy khối chuẩn bị phỏng vấn và tạo được bộ câu hỏi của mình ---
-        var student = await app.LoginAs("lan@itcp.vn");
+        var student = await LoginAs("lan@itcp.vn");
         var svHtml = await student.GetStringAsync($"/my-applications/{appId}");
         Assert.Contains("Chuẩn bị phỏng vấn", WebUtility.HtmlDecode(svHtml));
         Assert.Contains($"/my-applications/{appId}/interview-prep", svHtml);
 
         var gen = await student.PostAsync($"/my-applications/{appId}/interview-prep", new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            ["__RequestVerificationToken"] = AppFactory.TokenIn(svHtml)
+            ["__RequestVerificationToken"] = Token(svHtml)
         }));
         Assert.Contains("msg=", gen.Headers.Location?.OriginalString ?? "");
 

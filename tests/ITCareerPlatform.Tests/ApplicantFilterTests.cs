@@ -239,19 +239,16 @@ public class ApplicantFilterTests
 
     /// <summary>Huy hiệu và dòng tô sáng phải phân loại cùng một điểm giống nhau.</summary>
     [Theory]
-    [InlineData(100, ScoreBand.High, "score score-high", true)]
-    [InlineData(81, ScoreBand.High, "score score-high", true)]
-    [InlineData(80, ScoreBand.Mid, "score score-mid", false)]
-    [InlineData(50, ScoreBand.Mid, "score score-mid", false)]
-    [InlineData(49, ScoreBand.Low, "score score-low", false)]
-    [InlineData(0, ScoreBand.Low, "score score-low", false)]
-    public void Badge_And_RowHighlight_AgreeOnEveryScore(
-        int score, string expectedBand, string expectedCss, bool expectedTopRow)
+    [InlineData(100, "score score-high", true)]
+    [InlineData(81, "score score-high", true)]
+    [InlineData(80, "score score-mid", false)]
+    [InlineData(50, "score score-mid", false)]
+    [InlineData(49, "score score-low", false)]
+    [InlineData(0, "score score-low", false)]
+    public void Badge_And_RowHighlight_AgreeOnEveryScore(int score, string expectedCss, bool expectedTopRow)
     {
         Assert.Equal(expectedCss, Ui.ScoreClass(score));
         Assert.Equal(expectedTopRow, Ui.IsTopScore(score));
-        // Nhãn chú giải tương ứng với màu (xem ScoreBandLabels_MatchTheNumericThresholds).
-        Assert.Contains(expectedBand, new[] { ScoreBand.High, ScoreBand.Mid, ScoreBand.Low });
     }
 
     [Fact]

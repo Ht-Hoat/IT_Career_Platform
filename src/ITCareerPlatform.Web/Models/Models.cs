@@ -80,8 +80,11 @@ public class Company : ITimestamped
 {
     public int Id { get; set; }
 
+    /// <summary>Giới hạn cột, phát biểu một lần để chỗ ghi và chỗ khai báo không thể lệch nhau.</summary>
+    public const int NameLimit = 160;
+
     [Required(ErrorMessage = "Tên công ty không được để trống.")]
-    [MaxLength(160, ErrorMessage = "Tên công ty tối đa 160 ký tự.")]
+    [MaxLength(NameLimit, ErrorMessage = "Tên công ty tối đa 160 ký tự.")]
     public string Name { get; set; } = "";
 
     // Website để trống là hợp lệ; có nhập thì phải là https. Luật này được ProfileService
@@ -112,12 +115,16 @@ public class User : ITimestamped
 {
     public int Id { get; set; }
 
-    [Required(ErrorMessage = "Họ tên không được để trống."), MaxLength(120)]
+    // Mọi MaxLength kèm ErrorMessage tiếng Việt: ValidateAccount chạy Validator.TryValidateObject
+    // trên thực thể này rồi đưa thẳng câu đầu tiên ra form đăng ký CÔNG KHAI — thuộc tính nào
+    // không có câu riêng sẽ sinh ra câu tiếng Anh tự động và hiện lên màn hình cho người dùng đọc.
+    [Required(ErrorMessage = "Họ tên không được để trống.")]
+    [MaxLength(120, ErrorMessage = "Họ tên tối đa 120 ký tự.")]
     public string FullName { get; set; } = "";
 
     [Required(ErrorMessage = "Email không được để trống.")]
     [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
-    [MaxLength(160)]
+    [MaxLength(160, ErrorMessage = "Email tối đa 160 ký tự.")]
     public string Email { get; set; } = "";
 
     [Required, MaxLength(200)]
@@ -136,6 +143,15 @@ public class User : ITimestamped
 
     /// <summary>P0-3: Buộc người dùng đổi mật khẩu ở lần đăng nhập tiếp theo khi Admin reset.</summary>
     public bool MustChangePassword { get; set; }
+
+    /// <summary>
+    /// HR-REG: tài khoản HR/Mentor tự đăng ký ngoài đang CHỜ ADMIN DUYỆT.
+    /// true = chưa duyệt; kết hợp IsActive=false nên chưa đăng nhập được. Admin duyệt sẽ
+    /// đặt PendingApproval=false + IsActive=true. Khác "bị khóa" (IsActive=false nhưng
+    /// PendingApproval=false) để trang quản trị phân biệt được hai nhóm.
+    /// Mặc định false: mọi tài khoản cũ và tài khoản do Admin tạo tay đều KHÔNG chờ duyệt.
+    /// </summary>
+    public bool PendingApproval { get; set; }
 
     /// <summary>
     /// P1-1: công ty của tài khoản — chỉ có nghĩa với vai trò Mentor/HR. Nullable vì Admin
@@ -475,10 +491,37 @@ public class Application
     public int? FinalScore => HrScore ?? AiScore;
     public bool HasAiEvaluation => AiScore.HasValue;
     public bool IsOfflineEvaluation => AiSource == EvaluationSource.Offline;
+    public bool HasInternalNote => !string.IsNullOrWhiteSpace(InternalNote);
     public bool HasAiQuestions => !string.IsNullOrWhiteSpace(AiQuestions);
     public bool HasInterviewSchedule => InterviewAt.HasValue;
 
     public ICollection<ApplicationStatusHistory> StatusHistory { get; set; } = new List<ApplicationStatusHistory>();
+}
+
+// ===== HIST: lịch sử các bộ câu hỏi luyện phỏng vấn đã sinh cho một đơn =====
+// Mỗi lần sinh/sinh-lại bộ câu hỏi (InterviewPrepService) ghi thêm MỘT bản chụp vào đây,
+// để sinh viên xem lại các lần trước thay vì mất khi bấm "tạo lại". Application.AiQuestions
+// vẫn giữ BỘ MỚI NHẤT để đọc nhanh; bảng này chỉ để tra cứu lịch sử, không sắp theo từng câu.
+public class InterviewQuestionSnapshot
+{
+    /// <summary>
+    /// Số bộ câu hỏi cũ nhiều nhất mà trang đơn hiện. Mỗi bộ là tối đa 4000 ký tự JSON và
+    /// được dựng hết vào thân trang, nên không có trần thì trang phình theo số lần tạo lại.
+    /// </summary>
+    public const int HistoryLimit = 10;
+
+    public int Id { get; set; }
+
+    public int ApplicationId { get; set; }
+    public Application? Application { get; set; }
+
+    /// <summary>Cả bộ câu hỏi ở dạng JSON — cùng định dạng với Application.AiQuestions.</summary>
+    [MaxLength(4000)] public string QuestionsJson { get; set; } = "";
+
+    /// <summary>Gemini hay Offline — để nhãn hiển thị đúng nguồn khi xem lại.</summary>
+    [MaxLength(20)] public string Source { get; set; } = "";
+
+    public DateTime CreatedAt { get; set; }
 }
 
 /// <summary>Nguồn sinh ra điểm phù hợp — quyết định nhãn hiển thị cho Mentor và Sinh viên.</summary>
@@ -575,9 +618,18 @@ public class EmailOutbox
 {
     public int Id { get; set; }
 
-    [Required, MaxLength(200)] public string ToEmail { get; set; } = "";
-    [Required, MaxLength(300)] public string Subject { get; set; } = "";
-    [Required, MaxLength(4000)] public string Body { get; set; } = "";
+    // Giới hạn khai THÀNH HẰNG để chỗ soạn email (StatusEmailComposer) cắt theo đúng con số
+    // của cột. Tiêu đề dựng từ "{Job.Title} — {Company.Name}", mà hai cột đó cộng lại đã 320
+    // ký tự: vượt cột là một lần ghi HỎNG, và vì email xếp hàng TRONG cùng transaction với
+    // lần đổi trạng thái, nó làm hỏng luôn việc đổi trạng thái chứ không chỉ mất email.
+    public const int ToEmailLimit = 200;
+    public const int SubjectLimit = 300;
+    public const int BodyLimit = 4000;
+    public const int LastErrorLimit = 500;
+
+    [Required, MaxLength(ToEmailLimit)] public string ToEmail { get; set; } = "";
+    [Required, MaxLength(SubjectLimit)] public string Subject { get; set; } = "";
+    [Required, MaxLength(BodyLimit)] public string Body { get; set; } = "";
 
     [MaxLength(200)] public string? AttachmentName { get; set; }
     /// <summary>Nội dung tệp .ics — vài KB, không phải tệp người dùng tải lên.</summary>
@@ -587,7 +639,7 @@ public class EmailOutbox
     /// <summary>Null nghĩa là chưa gửi được — đó cũng là điều kiện quét của tiến trình nền.</summary>
     public DateTime? SentAt { get; set; }
     public int Attempts { get; set; }
-    [MaxLength(500)] public string? LastError { get; set; }
+    [MaxLength(LastErrorLimit)] public string? LastError { get; set; }
 
     /// <summary>
     /// Quá số lần này thì bỏ hẳn. Không có trần, một địa chỉ email sai chính tả sẽ được thử

@@ -1,0 +1,108 @@
+@page "/toolkit"
+@attribute [Authorize]
+
+@* ITC-03: Roadmap nghề nghiệp + Checklist kỹ năng *@
+
+<h1 class="page-title">Roadmap & Checklist kỹ năng IT</h1>
+<p class="sub">Lộ trình theo từng vị trí và checklist tự đánh giá mức sẵn sàng đi làm.</p>
+
+<div class="panel">
+    <h2>🗺️ Lộ trình nghề nghiệp (Roadmap)</h2>
+    <div class="action-grid">
+        @foreach (var r in Roadmaps)
+        {
+            <a class="action-card" href="@r.Url" target="_blank" rel="noopener">
+                <div class="action-card-icon">🚀</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">@r.Name</div>
+                    <div class="action-card-desc">@r.Skills</div>
+                </div>
+            </a>
+        }
+    </div>
+</div>
+
+<div class="panel" style="margin-top:16px">
+    <h2>✅ Checklist Sinh viên IT chuẩn bị phỏng vấn & đi làm</h2>
+    <div style="background:#e2e8f0;border-radius:8px;height:10px;margin:12px 0 6px;overflow:hidden">
+        <div id="progressBar" style="background:#1f4e79;height:100%;width:0%;transition:width .3s ease"></div>
+    </div>
+    <p class="sub" id="progressText">Bạn đã hoàn thành 0 kỹ năng.</p>
+
+    @foreach (var group in Checklist)
+    {
+        <h3 style="margin-top:16px;margin-bottom:8px;color:#1e3a5f">@group.Key</h3>
+        <div class="chk-list">
+            @foreach (var item in group.Value)
+            {
+                <label class="chk">
+                    <input type="checkbox" class="chk-item" data-id="@(group.Key + "|" + item)" onchange="updateProgress()" />
+                    <span>@item</span>
+                </label>
+            }
+        </div>
+    }
+</div>
+
+<script>
+    const KEY = 'itcp_checklist';
+    function loadState() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } }
+    function saveState(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} }
+    function updateProgress() {
+        const boxes = document.querySelectorAll('.chk-item');
+        const s = {};
+        let done = 0;
+        boxes.forEach(b => { if (b.checked) { s[b.dataset.id] = 1; done++; } });
+        saveState(s);
+        const total = boxes.length;
+        const pct = total ? Math.round(done * 100 / total) : 0;
+        const bar = document.getElementById('progressBar');
+        const txt = document.getElementById('progressText');
+        if (bar) bar.style.width = pct + '%';
+        if (txt) txt.textContent = `Bạn đã hoàn thành ${done}/${total} kỹ năng (${pct}%).`;
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        const s = loadState();
+        document.querySelectorAll('.chk-item').forEach(b => { if (s[b.dataset.id]) b.checked = true; });
+        updateProgress();
+    });
+</script>
+
+@code {
+    private record R(string Name, string Skills, string Url);
+
+    private static readonly R[] Roadmaps =
+    {
+        new("Frontend Developer", "HTML, CSS, JS, React/Vue, Git", "https://roadmap.sh/frontend"),
+        new("Backend Developer", ".NET/Java/Node, SQL, REST API, Docker", "https://roadmap.sh/backend"),
+        new("Mobile Developer", "Flutter / React Native / Kotlin", "https://roadmap.sh/android"),
+        new("DevOps Engineer", "Linux, Docker, Kubernetes, CI/CD, Cloud", "https://roadmap.sh/devops"),
+        new("Data / AI Engineer", "Python, SQL, ML cơ bản, LLM", "https://roadmap.sh/ai-data-scientist"),
+    };
+
+    private static readonly Dictionary<string, string[]> Checklist = new()
+    {
+        ["Kỹ năng kỹ thuật (Technical)"] = new[]
+        {
+            "Thành thạo ít nhất 1 ngôn ngữ lập trình", "Hiểu Git & làm việc với GitHub",
+            "Biết viết & tối ưu truy vấn SQL", "Hiểu REST API và cách gọi/thiết kế",
+            "Biết dùng Docker cơ bản", "Đã làm ít nhất 1 dự án đầy đủ (end-to-end)"
+        },
+        ["Kỹ năng mềm (Soft Skills)"] = new[]
+        {
+            "Giao tiếp & trình bày rõ ràng", "Làm việc nhóm (teamwork)",
+            "Quản lý thời gian & deadline", "Tiếng Anh đọc tài liệu kỹ thuật"
+        },
+        ["Hồ sơ chuẩn (Portfolio)"] = new[]
+        {
+            "CV IT 1 trang, đúng định dạng PDF", "GitHub có ít nhất 2-3 repo sạch, có README",
+            "LinkedIn cập nhật đầy đủ", "Portfolio/website cá nhân", "Có side project nổi bật"
+        },
+        ["Chuẩn bị phỏng vấn"] = new[]
+        {
+            "Luyện thuật toán (LeetCode/HackerRank)", "Ôn câu hỏi phỏng vấn theo vị trí",
+            "Chuẩn bị giới thiệu bản thân 1 phút", "Tìm hiểu công ty trước khi phỏng vấn",
+            "Chuẩn bị câu hỏi ngược cho nhà tuyển dụng"
+        },
+    };
+}

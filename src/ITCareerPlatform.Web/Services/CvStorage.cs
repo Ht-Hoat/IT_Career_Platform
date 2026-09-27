@@ -22,21 +22,6 @@ public interface ICvStorage
     Task DeleteAsync(string key, CancellationToken ct = default);
 }
 
-public static class CvStorageExtensions
-{
-    /// <summary>
-    /// P2-2: ưu tiên khóa lưu trữ, lùi về cột byte[] cũ khi chưa di trú hoặc khóa đã mất tệp.
-    /// Mảng rỗng coi như không có. MỘT chỗ phát biểu thứ tự này cho mọi đường đọc CV — tải CV,
-    /// chấm AI, tự kiểm tra — để chúng không thể trả lời khác nhau cho cùng một đơn.
-    /// </summary>
-    public static async Task<byte[]?> ReadOrLegacyAsync(this ICvStorage storage, string? key, byte[]? legacy,
-        CancellationToken ct = default)
-    {
-        if (key is not null && await storage.ReadAsync(key, ct) is { } data) return data;
-        return legacy is { Length: > 0 } ? legacy : null;
-    }
-}
-
 /// <summary>
 /// Bản triển khai đầu tiên: lưu tệp trên đĩa theo thư mục cấu hình (CvStorage:RootPath).
 ///
@@ -149,4 +134,27 @@ public class DiskCvStorage : ICvStorage
     /// </summary>
     private string PathFor(string key) =>
         Path.Combine(_root, key[..2], key[2..4], key);
+}
+
+/// <summary>
+/// P2-2: thứ tự đọc CV, phát biểu đúng MỘT lần cho mọi đường — tải CV, chấm AI, tự kiểm tra.
+/// Ba bản chép tay sẽ trôi khỏi nhau và trả lời khác nhau cho cùng một đơn.
+/// </summary>
+public static class CvStorageExtensions
+{
+    /// <summary>
+    /// Ưu tiên khóa lưu trữ, lùi về cột byte[] cũ khi chưa di trú hoặc khóa đã mất tệp.
+    ///
+    /// Mảng RỖNG coi như không có, ở CẢ HAI nhánh. Nhánh cột cũ là hiển nhiên (upload hỏng để
+    /// lại byte[0]), nhưng nhánh storage cũng cần: CvMigrationRunner lọc theo "CvData != null",
+    /// mà byte[0] không phải null — nên nó ghi ra một tệp 0 byte và gán cho hồ sơ một khóa hợp
+    /// lệ. Chỉ kiểm khác-null ở đây thì sau lần di trú, CV rỗng lại được trả về như CV thật:
+    /// người dùng tải về tệp 0 byte, còn AI chấm trên một CV rỗng mà không có lỗi nào báo.
+    /// </summary>
+    public static async Task<byte[]?> ReadOrLegacyAsync(this ICvStorage storage, string? key, byte[]? legacy,
+        CancellationToken ct = default)
+    {
+        if (key is not null && await storage.ReadAsync(key, ct) is { Length: > 0 } data) return data;
+        return legacy is { Length: > 0 } ? legacy : null;
+    }
 }

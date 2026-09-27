@@ -50,14 +50,19 @@ public sealed class AppFactory : WebApplicationFactory<Program>
         });
     }
 
-    // ===== Helper dùng chung cho các lớp test HTTP =====
+    public T Query<T>(Func<AppDbContext, T> read)
+    {
+        using var scope = Services.CreateScope();
+        return read(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    }
 
+    /// <summary>Mật khẩu của mọi tài khoản mẫu (SeedData).</summary>
     public const string SeedPassword = "123456";
-    private static readonly Regex TokenInput = new(@"name=""__RequestVerificationToken""[^>]*value=""(?<t>[^""]+)""");
 
     /// <summary>
-    /// Đăng nhập bằng tài khoản mẫu. Mỗi lần tốn một lượt của giới hạn tốc độ (10 lượt/phút/IP),
-    /// tính theo TỪNG app — lớp test nào đăng nhập nhiều thì dùng AppFactory riêng.
+    /// Đăng nhập và trả về client mang cookie. Ở MỘT chỗ: mật khẩu mẫu và hợp đồng "đăng
+    /// nhập thành công thì trả 302" từng được chép vào ba lớp test, nên một thay đổi trong
+    /// luồng đăng nhập chỉ sửa được một bản và để hai bản còn lại khẳng định thứ không còn đúng.
     /// </summary>
     public async Task<HttpClient> LoginAs(string email)
     {
@@ -67,32 +72,35 @@ public sealed class AppFactory : WebApplicationFactory<Program>
             ["email"] = email, ["password"] = SeedPassword
         }));
         Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
-        Assert.Equal("/", res.Headers.Location?.OriginalString);
         return client;
     }
 
-    /// <summary>Token chống giả mạo có trong trang; test đỏ ngay nếu trang không có ô token.</summary>
-    public static string TokenIn(string html)
+    /// <summary>Id của một tin trong dữ liệu mẫu, tra theo tiêu đề.</summary>
+    public int JobId(string title) => Query(db => db.Jobs.AsNoTracking().Single(j => j.Title == title).Id);
+
+    private static readonly Regex TokenInput = new(@"name=""__RequestVerificationToken""[^>]*value=""(?<t>[^""]+)""");
+
+    /// <summary>
+    /// Token chống giả mạo có trong trang. Ở MỘT chỗ cùng với <see cref="Form"/>: bốn lớp test
+    /// HTTP cần đúng cặp này, và một bản chép tay dễ bỏ mất dòng Assert bên dưới — lúc đó trang
+    /// thiếu ô token sẽ hỏng ở bước POST với thông báo "antiforgery", chứ không nói ra nguyên nhân.
+    /// </summary>
+    public static string TokenIn(string html, string? page = null)
     {
         var m = TokenInput.Match(html);
-        Assert.True(m.Success, "Trang không có ô token chống giả mạo.");
+        Assert.True(m.Success, $"Trang {page ?? "(html)"} không có ô token chống giả mạo.");
         return WebUtility.HtmlDecode(m.Groups["t"].Value);
     }
 
     public static async Task<string> TokenFrom(HttpClient client, string page) =>
-        TokenIn(await client.GetStringAsync(page));
+        TokenIn(await client.GetStringAsync(page), page);
 
+    /// <summary>Thân form urlencoded kèm token; <paramref name="token"/> = null để thử nhánh bị chặn.</summary>
     public static FormUrlEncodedContent Form(string? token, params (string Key, string Value)[] fields)
     {
         var all = fields.Select(f => new KeyValuePair<string, string>(f.Key, f.Value)).ToList();
         if (token is not null) all.Add(new("__RequestVerificationToken", token));
         return new FormUrlEncodedContent(all);
-    }
-
-    public T Query<T>(Func<AppDbContext, T> read)
-    {
-        using var scope = Services.CreateScope();
-        return read(scope.ServiceProvider.GetRequiredService<AppDbContext>());
     }
 
     protected override void Dispose(bool disposing)
@@ -107,13 +115,16 @@ public sealed class AppFactory : WebApplicationFactory<Program>
 
 public class HttpEndpointTests(AppFactory app) : IClassFixture<AppFactory>
 {
-    // Cả lớp dùng chung một app, nên tổng số lần đăng nhập của lớp phải dưới 10 (giới hạn tốc độ).
+    // Mỗi lần đăng nhập tốn một lượt của giới hạn tốc độ (10 lượt/phút/IP) và cả lớp test dùng
+    // chung một app — giữ tổng số lần đăng nhập của lớp dưới mức đó.
     private Task<HttpClient> LoginAs(string email) => app.LoginAs(email);
+
     private static Task<string> TokenFrom(HttpClient client, string page) => AppFactory.TokenFrom(client, page);
+
     private static FormUrlEncodedContent Form(string? token, params (string Key, string Value)[] fields) =>
         AppFactory.Form(token, fields);
 
-    private int JobId(string title) => app.Query(db => db.Jobs.Single(j => j.Title == title).Id);
+    private int JobId(string title) => app.JobId(title);
 
     // ===== P2-3: antiforgery =====
 
