@@ -20,20 +20,31 @@ Công nghệ: **.NET 10 (Blazor Server) + EF Core + SQL Server + Docker**
 
 ## Cách A — Chạy trực tiếp (SQL Server cài sẵn trên máy)
 
-```bash
-# 1. Vào thư mục web
-cd ITCareerPlatform/src/ITCareerPlatform.Web
-
-# 2. Kiểm tra chuỗi kết nối trong appsettings.json (mặc định dùng localhost)
-#    "Server=localhost;Database=ITCareerPlatform;Trusted_Connection=True;TrustServerCertificate=True"
-
-# 3. Tải gói + chạy
-dotnet restore
+```powershell
+cd src/ITCareerPlatform.Web
 dotnet run
 ```
 
-Mở trình duyệt: **https://localhost:5001** (hoặc cổng in ra ở console).
-Lần chạy đầu, ứng dụng **tự tạo CSDL + seed dữ liệu mẫu** (bảng, 3 vai trò, tài khoản demo, tin việc IT).
+Mở trình duyệt: **http://localhost:5000**. Tắt bằng `Ctrl + C`.
+Lần chạy đầu, ứng dụng **tự tạo CSDL, chạy migration và seed dữ liệu mẫu** (3 vai trò, tài khoản demo, tin việc IT).
+
+`dotnet run` đọc `Properties/launchSettings.json` nên tự chạy ở môi trường **Development** —
+đó là điều kiện để app đọc `appsettings.Development.json` và gieo dữ liệu mẫu.
+
+### Chuỗi kết nối — tùy loại SQL Server trên máy
+
+`appsettings.json` mặc định trỏ **`localhost\SQLEXPRESS`**. Máy bạn khác thì **đừng sửa
+`appsettings.json`** (tệp dùng chung cả nhóm) — sao chép `appsettings.Development.json.example`
+thành `appsettings.Development.json` cạnh nó (đã `.gitignore`) và đặt chuỗi kết nối ở đó.
+
+| Máy bạn chạy | Làm gì |
+|---|---|
+| SQL Server **Express** | Không cần làm gì |
+| SQL Server **bản thường** | Bỏ comment mục `ConnectionStrings` trong tệp mẫu (`Server=localhost`) |
+| SQL Server trong **Docker** | `Server=localhost,1433;Database=ITCareerPlatform;User Id=sa;Password=Your_password123;TrustServerCertificate=True;MultipleActiveResultSets=true` |
+
+Không biết máy mình loại nào: chạy `Get-Service MSSQL*` trong PowerShell —
+`MSSQL$SQLEXPRESS` là Express, `MSSQLSERVER` là bản thường.
 
 ### Dùng SQL Server bằng Docker (nếu chưa cài SQL)
 
@@ -42,11 +53,20 @@ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Your_password123" \
   -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
 ```
 
-Rồi đổi chuỗi kết nối trong `appsettings.json` thành:
+Rồi dùng dòng **Docker** ở bảng trên.
 
-```
-Server=localhost,1433;Database=ITCareerPlatform;User Id=sa;Password=Your_password123;TrustServerCertificate=True
-```
+### Gặp lỗi khi chạy
+
+- **`dotnet` không được nhận ra** — .NET cài vào `%LOCALAPPDATA%\Microsoft\dotnet` nhưng thư mục
+  đó chưa nằm trong PATH. Thêm một lần rồi mở lại terminal (VS Code phải tắt hẳn rồi mở lại):
+  ```powershell
+  [Environment]::SetEnvironmentVariable("PATH", [Environment]::GetEnvironmentVariable("PATH","User") + ";$env:LOCALAPPDATA\Microsoft\dotnet", "User")
+  ```
+- **"ConnectionStrings:DefaultConnection vẫn đang trỏ localhost ở môi trường không phải
+  Development"** — app đang chạy ở môi trường Production, thường do `dotnet run --no-launch-profile`
+  hoặc thiếu `Properties/launchSettings.json`. Chạy lại bằng `dotnet run` trơn. Chốt này có chủ ý:
+  bản triển khai thật quên ghi đè chuỗi kết nối thì dừng hẳn, chứ không lặng lẽ trỏ vào máy cá nhân.
+- **Không kết nối được SQL Server** — chuỗi kết nối chưa khớp loại SQL Server trên máy, xem bảng trên.
 
 ---
 
@@ -89,9 +109,10 @@ Không bật vẫn chạy được: hệ thống **tự chấm điểm bằng th
 Để dùng AI thật:
 
 1. Lấy API key miễn phí: https://aistudio.google.com/apikey
-2. Trong `src/ITCareerPlatform.Web/`, đổi tên `appsettings.Development.json.example`
-   → `appsettings.Development.json`, dán key vào `Gemini:ApiKey`.
-   (Tệp này đã được `.gitignore` nên **key không bị đẩy lên Git**.)
+2. Trong `src/ITCareerPlatform.Web/`, mở `appsettings.Development.json` (chưa có thì sao chép từ
+   `appsettings.Development.json.example`) và dán key vào `Gemini:ApiKey`.
+   (Tệp này đã được `.gitignore` nên **key không bị đẩy lên Git**.) Ô nào chưa có giá trị thật thì
+   **để trống** — app coi chuỗi khác rỗng là đã cấu hình và sẽ gọi thật rồi hỏng.
 3. Với Docker: đặt biến môi trường `GEMINI_API_KEY` rồi `docker compose up`.
 
 ---
