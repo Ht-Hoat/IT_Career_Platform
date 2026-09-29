@@ -1,0 +1,129 @@
+\chapter{GIỚI THIỆU DỰ ÁN}
+\label{chap:gioi-thieu}
+
+\section{Bối cảnh và Vấn đề thực tế}
+\label{sec:boi-canh}
+
+Trong kỷ nguyên chuyển đổi số và sự bùng nổ của các giải pháp phần mềm hiện đại, thị trường lao động ngành Công nghệ Thông tin (CNTT) tại Việt Nam đang chứng kiến sự dịch chuyển mạnh mẽ về cơ cấu kỹ năng và tiêu chuẩn tuyển dụng. Hàng năm, các trường đại học và cơ sở đào tạo cung cấp hàng chục nghìn cử nhân, kỹ sư công nghệ; tuy nhiên, nghịch lý tồn tại dai dẳng là các doanh nghiệp phần mềm vẫn đối mặt với tình trạng thiếu hụt trầm trọng nhân sự đáp ứng đúng yêu cầu công việc. Sự chênh lệch kỹ năng (\textit{skill gap}) và sự bất cân xứng thông tin giữa nhà trường và doanh nghiệp là nguyên nhân gốc rễ dẫn đến hiệu quả tuyển dụng thấp \cite{pressman2020}.
+
+Khảo sát thực tiễn quá trình tuyển dụng nhân lực IT cho thấy các nút thắt kỹ thuật và nghiệp vụ nghiêm trọng sau đây:
+\begin{enumerate}
+    \item \textbf{Vấn đề của sinh viên và người tìm việc IT:} Sinh viên mới tốt nghiệp hoặc chuẩn bị thực tập thường thiếu kinh nghiệm thực chiến trong việc cấu trúc hồ sơ nghề nghiệp. Khi nộp đơn vào các vị trí lập trình, sinh viên không thể tự định lượng được mức độ tương thích giữa kiến thức bản thân (thông qua Tech Stack, dự án trên GitHub, chứng chỉ) với bản mô tả công việc (Job Description - JD). Khi bị từ chối, ứng viên hầu như chỉ nhận được thông báo chung chung, hoàn toàn thiếu phản hồi mang tính định hướng về các kỹ năng công nghệ còn thiếu sót để tự rèn luyện.
+    \item \textbf{Vấn đề của nhà tuyển dụng và Mentor IT:} Bộ phận tuyển dụng và các chuyên gia kỹ thuật (Mentor/Tech Lead) thường xuyên bị quá tải bởi số lượng lớn hồ sơ không phù hợp (tình trạng \textit{CV spamming}). Các công cụ lọc CV truyền thống dựa trên phép so khớp từ khóa cơ bản (\textit{keyword matching}) bộc lộ hai nhược điểm lớn: (1) dễ bị đánh lừa bởi các thủ thuật chèn từ khóa ẩn trong CV, và (2) bỏ sót những ứng viên có tiềm năng nhưng sử dụng thuật ngữ công nghệ đồng nghĩa. Hơn nữa, việc phối hợp đánh giá hồ sơ, ghi chú nội bộ và lên lịch phỏng vấn thường bị phân tán rời rạc qua email và bảng tính, dẫn đến sai sót và chậm trễ.
+    \item \textbf{Vấn đề an toàn thông tin và tính toàn vẹn dữ liệu:} Hồ sơ ứng viên (định dạng PDF/DOCX) là tệp tin do người dùng bên ngoài tải lên máy chủ, tiềm ẩn nguy cơ chứa mã độc thực thi (tệp tin thực thi giả mạo hoặc chữ ký độc hại). Ngoài ra, khi ứng viên cập nhật hồ sơ cá nhân sau khi nộp đơn, việc không đóng băng trạng thái CV tại thời điểm nộp sẽ làm sai lệch căn cứ đánh giá của hội đồng tuyển dụng. Đặc biệt, việc quản lý và xử lý dữ liệu cá nhân của ứng viên đòi hỏi phải tuân thủ nghiêm ngặt các quy định pháp lý hiện hành, điển hình là Nghị định số 13/2023/NĐ-CP của Chính phủ về bảo vệ dữ liệu cá nhân \cite{decree13}.
+    \item \textbf{Nhu cầu ứng dụng Trí tuệ Nhân tạo (AI):} Nhu cầu cấp thiết đặt ra là phải xây dựng một giải pháp phân tích ngữ nghĩa sâu giữa CV và JD bằng các mô hình ngôn ngữ lớn (LLM), có khả năng bóc tách chuyên môn, định lượng phần trăm tương thích và đề xuất lộ trình khắc phục điểm yếu. Tuy nhiên, một hệ thống AI phục vụ sản xuất không được phép phụ thuộc tuyệt đối vào dịch vụ đám mây bên thứ ba mà phải có cơ chế dự phòng ngoại tuyến (\textit{offline fallback}) khi gặp sự cố mạng hoặc cạn kiệt hạn ngạch (\textit{quota limit}).
+\end{enumerate}
+
+Xuất phát từ các vấn đề thực tiễn trên, dự án \textbf{IT Career Platform} được xây dựng nhằm cung cấp một nền tảng quản trị tuyển dụng tích hợp hệ thống theo dõi ứng viên (Applicant Tracking System - ATS) chuyên biệt cho ngành IT, kết hợp công nghệ AI tạo sinh (Google Gemini) để giải quyết triệt để bài toán kết nối việc làm và định hướng phát triển nghề nghiệp.
+
+\section{Áp dụng Nguyên tắc W5HH (Barry Boehm) vào dự án}
+\label{sec:w5hh}
+
+Nhằm thiết lập một khung quản trị dự án phần mềm chặt chẽ ngay từ giai đoạn khởi tạo, nhóm phát triển đã áp dụng nguyên tắc quản trị \textbf{W5HH} do Giáo sư Barry W. Boehm đề xuất \cite{boehm1996}. Bảng~\ref{tab:w5hh} phân tích chi tiết 7 câu hỏi nền tảng được ánh xạ trực tiếp vào hiện trạng của dự án IT Career Platform.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Áp dụng nguyên tắc W5HH của Barry Boehm vào dự án IT Career Platform}
+\label{tab:w5hh}
+\begin{tabularx}{\textwidth}{l p{3.2cm} X}
+\toprule
+\textbf{Thành phần} & \textbf{Câu hỏi bản chất} & \textbf{Hiện thực hóa trong dự án IT Career Platform} \\
+\midrule
+\textbf{Why} & Vì sao cần xây dựng hệ thống? & Giải quyết triệt để bài toán mất cân xứng thông tin tuyển dụng IT; loại bỏ thao tác sàng lọc CV thủ công tốn kém; cung cấp cố vấn AI định hướng lộ trình học tập cho sinh viên IT; đảm bảo an toàn dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP. \\
+\addlinespace
+\textbf{What} & Hệ thống xây dựng những gì? & Hệ thống Web hoàn chỉnh gồm 3 phân hệ chức năng: (1) Sinh viên IT, (2) Mentor / HR IT, (3) Quản trị viên (Admin). Quản lý 12 thực thể CSDL cốt lõi, quy trình ATS 5 trạng thái, đánh giá AI Gemini kèm fallback heuristic ngoại tuyến, đóng băng bản chụp CV, sinh lịch hẹn phỏng vấn định dạng chuẩn \texttt{.ics}, và bảng điều khiển trực quan hóa với Chart.js. \\
+\addlinespace
+\textbf{When} & Thực hiện trong thời gian nào? & Dự án được thực thi trong Học kỳ 7 (tháng 09/2026), tổ chức theo khung Agile/Scrum qua 4 Sprint phát triển liên tục và các chu kỳ tích hợp, kiểm định nghiêm ngặt. \\
+\addlinespace
+\textbf{Who} & Ai tham gia và ai sử dụng? & \textbf{Đội ngũ phát triển:} Nhóm 9 môn QLDA CNTT gồm 5 thành viên (xác minh qua Git: Hà Thúc Hoạt, Nguyễn Viết Hùng, Võ Nguyên Anh Kiệt; 2 thành viên còn lại: \textbf{[CHƯA XÁC ĐỊNH TRONG GIT - CẦN BỔ SUNG TỪ BIÊN BẢN LỚP]}). \textbf{Người dùng:} Sinh viên IT, Mentor / Nhà tuyển dụng IT, Quản trị viên hệ thống. \\
+\addlinespace
+\textbf{Where} & Triển khai ở đâu? & Nền tảng Web chạy trên môi trường .NET 10 (Blazor Server SSR), cơ sở dữ liệu Microsoft SQL Server 2022, đóng gói toàn bộ dịch vụ thông qua Docker Compose trên máy chủ cục bộ hoặc đám mây. \\
+\addlinespace
+\textbf{How} & Phát triển bằng quy trình nào? & Áp dụng phương pháp luận Agile/Scrum; quản lý mã nguồn trên GitHub với chiến lược phân nhánh Gitflow; kiểm thử hồi quy tự động liên tục qua CI/CD (GitHub Actions); kiểm thử đơn vị tự động với xUnit và SQLite In-Memory. \\
+\addlinespace
+\textbf{How much} & Quy mô dự án như thế nào? & Nhu cầu ban đầu xuất phát từ 68 User Stories; sau quá trình sàng lọc MoSCoW, hệ thống chốt phạm vi 18 User Stories cốt lõi ATS (ATS-01 đến ATS-18) cùng các gói nâng cấp P0, P1, P2, N1, N2, UI-1..13 với 415 ca kiểm thử tự động. Chi phí hạ tầng tiền tệ: 0 VNĐ nhờ tận dụng các gói học thuật miễn phí (Google AI Studio, SQL Server Express, Docker Community). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Mục tiêu của dự án}
+\label{sec:muc-tieu}
+
+Dựa trên tài liệu đặc tả và mã nguồn thực tế, mục tiêu của dự án được phân định rành mạch thành các cấp độ kỹ thuật và nghiệp vụ:
+
+\subsection{Mục tiêu tổng quát}
+Xây dựng một nền tảng công nghệ toàn diện, tin cậy và hiệu năng cao nhằm chuẩn hóa quy trình tuyển dụng nhân sự IT; ứng dụng công nghệ AI để nâng cao chất lượng ghép nối ứng viên và cung cấp giá trị gia tăng định hướng giáo dục cho sinh viên công nghệ.
+
+\subsection{Mục tiêu nghiệp vụ}
+\begin{itemize}
+    \item \textbf{Tối ưu hóa thời gian sàng lọc:} Giảm thiểu trên 70\% thời gian đọc và phân loại hồ sơ ban đầu của nhà tuyển dụng thông qua bảng xếp hạng ứng viên tự động dựa trên mức độ phù hợp kỹ thuật.
+    \item \textbf{Minh bạch hóa luồng tuyển dụng:} Chuẩn hóa quy trình ứng tuyển qua 5 trạng thái định sẵn, lưu vết lịch sử thay đổi để ứng viên và nhà tuyển dụng đều nắm bắt chính xác tiến độ xử lý đơn.
+    \item \textbf{Cầu nối giáo dục nghề nghiệp:} Chuyển đổi mô hình tuyển dụng từ "loại bỏ ứng viên" sang "định hướng phát triển", giúp sinh viên nhận diện rõ khoảng trống kỹ năng so với thực tế doanh nghiệp.
+\end{itemize}
+
+\subsection{Mục tiêu kỹ thuật}
+\begin{itemize}
+    \item \textbf{Kiến trúc hướng dịch vụ mạnh mẽ:} Xây dựng hệ thống trên nền tảng .NET 10 sử dụng Blazor Server với mô hình Server-Side Rendering (SSR) kết hợp hoàn toàn với Dependency Injection (DI) thông qua 100\% interface trừu tượng.
+    \item \textbf{Tính sẵn sàng cao (High Availability):} Thiết lập cơ chế chuyển mạch kép (\textit{dual-switch architecture}): hệ thống ưu tiên sử dụng Google Gemini 1.5/2.0 API; trong trường hợp mất kết nối mạng, lỗi timeout hoặc cạn kiệt hạn ngạch, dịch vụ tự động chuyển đổi sang thuật toán Heuristic Offline Matcher cục bộ mà không gây gián đoạn hay crash ứng dụng.
+    \item \textbf{An toàn thông tin đa lớp:} Quét mã độc CV tại tầng ứng dụng (\texttt{CvScanner}), bảo vệ biểu mẫu bằng Antiforgery Token chống tấn công CSRF, băm mật khẩu chuẩn công nghiệp với BCrypt, và kiểm soát phiên đăng nhập thông qua \texttt{SecurityStamp}.
+    \item \textbf{Chuẩn hóa kiểm thử tự động:} Đạt độ bao phủ kiểm thử cao với 415 bài kiểm thử tự động (Unit Test) chạy độc lập trên môi trường SQLite In-Memory, bảo đảm không xảy ra lỗi hồi quy khi tích hợp mã nguồn.
+\end{itemize}
+
+\subsection{Mục tiêu đối với từng nhóm đối tượng}
+\begin{itemize}
+    \item \textbf{Đối với Sinh viên IT (Candidate):} Cung cấp công cụ xây dựng hồ sơ kỹ thuật số chuyên sâu; hỗ trợ công cụ tự kiểm tra độ phù hợp (\textit{SelfCheck}) trước khi nộp đơn; cung cấp bộ câu hỏi và gợi ý phỏng vấn chuyên sâu do AI tạo lập.
+    \item \textbf{Đối với Nhà tuyển dụng (Mentor / HR IT):} Cung cấp giao diện quản lý tin tuyển dụng theo chuẩn IT; bảng quản trị ứng viên trực quan với phân loại màu điểm số; công cụ ghi chú nội bộ bảo mật; tự động hóa việc gửi thư mời phỏng vấn kèm tệp lịch \texttt{.ics}.
+    \item \textbf{Đối với Quản trị viên (Admin):} Cung cấp bảng điều khiển giám sát toàn diện hoạt động hệ thống; quản trị tài khoản, kiểm duyệt nhà tuyển dụng mới đăng ký và truy vết nhật ký kiểm toán hệ thống (\texttt{AuditLog}).
+\end{itemize}
+
+\section{Đối tượng người dùng (Stakeholders)}
+\label{sec:stakeholders}
+
+Hệ thống IT Career Platform được thiết kế để phục vụ 4 nhóm đối tượng tác nhân (Stakeholders) chính, tương ứng với cấu trúc phân quyền và nghiệp vụ thực tế trong mã nguồn:
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Bảng phân tích các đối tượng người dùng (Stakeholders) của hệ thống}
+\label{tab:stakeholders}
+\begin{tabularx}{\textwidth}{l p{2.8cm} X p{3.2cm}}
+\toprule
+\textbf{Stakeholder} & \textbf{Vai trò hệ thống} & \textbf{Nhu cầu \& Chức năng chính} & \textbf{Lợi ích mang lại} \\
+\midrule
+\textbf{Sinh viên IT} & Vai trò \texttt{SinhVienIT} (ID: 3) trong mã nguồn & 
+- Quản lý hồ sơ cá nhân IT (GitHub, LinkedIn, Tags, CV).\\
+- Tìm kiếm và lọc việc làm đa tiêu chí.\\
+- Nộp đơn và theo dõi trạng thái đơn.\\
+- Tự kiểm tra độ phù hợp bằng AI (\textit{SelfCheck}).\\
+- Luyện phỏng vấn với câu hỏi và gợi ý của AI. &
+- Nhận phản hồi chuyên môn rõ ràng.\\
+- Nắm bắt lộ trình học tập bù đắp thiếu sót.\\
+- Tăng tỷ lệ trúng tuyển qua luyện tập phỏng vấn.\\
+\addlinespace
+\textbf{Mentor / HR IT} & Vai trò \texttt{Mentor} (ID: 2) trong mã nguồn &
+- Quản lý tin tuyển dụng thuộc công ty sở hữu.\\
+- Xem danh sách và chi tiết ứng viên nộp đơn.\\
+- Kích hoạt đánh giá AI và điều chỉnh điểm (\textit{HrScore}).\\
+- Ghi chú nội bộ bí mật (\textit{InternalNote}).\\
+- Mời phỏng vấn (tự tạo file \texttt{.ics}), từ chối kèm phản hồi. &
+- Rút ngắn chu kỳ tuyển dụng.\\
+- Lựa chọn chính xác ứng viên phù hợp với Tech Stack.\\
+- Quản lý lịch phỏng vấn và trao đổi chuyên nghiệp.\\
+\addlinespace
+\textbf{Quản trị viên} & Vai trò \texttt{Admin} (ID: 1) trong mã nguồn &
+- Quản lý tài khoản, khóa/mở khóa, phân quyền Role.\\
+- Duyệt/Từ chối tài khoản HR tự đăng ký mới.\\
+- Đặt lại mật khẩu an toàn cho người dùng.\\
+- Giám sát toàn bộ tin tuyển dụng (chế độ chỉ xem).\\
+- Tra cứu nhật ký kiểm toán (\texttt{AuditLogs}). &
+- Đảm bảo an ninh, tính toàn vẹn và tuân thủ quy chế vận hành hệ thống.\\
+- Ngăn ngừa hành vi giả mạo nhà tuyển dụng.\\
+\addlinespace
+\textbf{Dịch vụ AI} & Tác nhân tích hợp ngoại vi (Google Gemini) &
+- Tiếp nhận yêu cầu trích xuất ngữ nghĩa và so khớp.\\
+- Trả về cấu trúc JSON gồm điểm số, ưu/nhược điểm và lộ trình. &
+- Cung cấp năng lực suy luận ngôn ngữ tự nhiên hiện đại với chi phí 0 VNĐ.\\
+\bottomrule
+\end{tabularx}
+\end{table}

@@ -6,3 +6,18 @@ obj/
 # KHÔNG commit API key và cấu hình dev cục bộ
 appsettings.Development.json
 TestResults/
+
+# LaTeX intermediate build files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc

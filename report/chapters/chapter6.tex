@@ -1,0 +1,174 @@
+\chapter{KIỂM THỬ VÀ ĐÁNH GIÁ KẾT QUẢ}
+\label{chap:kiem-thu-danh-gia}
+
+\section{Định nghĩa Hoàn thành (Definition of Done - DoD)}
+\label{sec:dod}
+
+Trong quy trình phát triển phần mềm theo Scrum \cite{scrumguide2020}, \textbf{Definition of Done (DoD)} đóng vai trò là một bản cam kết chất lượng chuẩn mực giữa Product Owner và Development Team. Để bảo đảm tính khách quan và khoa học, báo cáo phân định rõ ràng giữa \textbf{DoD lý thuyết công nghiệp} và \textbf{DoD thực tế mà nhóm đã áp dụng} trong đồ án.
+
+\subsection{DoD lý thuyết trong công nghiệp phần mềm}
+Trong môi trường doanh nghiệp quy mô lớn, một User Story chỉ được coi là hoàn thành (Done) khi thỏa mãn toàn bộ các điều kiện khắt khe:
+\begin{enumerate}
+    \item 100\% tiêu chí chấp nhận (Acceptance Criteria) được cài đặt và kiểm thử đạt.
+    \item Đạt độ bao phủ kiểm thử đơn vị (Unit Test Coverage) tối thiểu trên 80\%.
+    \item Vượt qua các bài kiểm thử tích hợp (Integration Test) và kiểm thử đầu-cuối (End-to-End E2E Test) trên môi trường Staging.
+    \item Được ít nhất 2 kỹ sư cấp cao (Senior Engineer) phê duyệt qua Code Review.
+    \item Vượt qua các công cụ quét mã tĩnh (SAST - SonarQube) không có lỗ hổng bảo mật nghiêm trọng (Vulnerability) và nợ kỹ thuật (Technical Debt).
+    \item Kiểm thử tải hiệu năng (Performance \& Stress Testing) đáp ứng SLA quy định.
+    \item Tài liệu hướng dẫn sử dụng và tài liệu kiến trúc được cập nhật đầy đủ.
+\end{enumerate}
+
+\subsection{DoD thực tế nhóm áp dụng trong dự án IT Career Platform}
+Đối chiếu với điều kiện thực tế của một đồ án môn học với đội ngũ 5 sinh viên, nhóm đã xây dựng một bộ tiêu chuẩn DoD thực dụng, bám sát các ràng buộc kỹ thuật của nền tảng .NET 10 và Blazor Server:
+\begin{enumerate}
+    \item \textbf{Biên dịch sạch (Clean Build):} Toàn bộ mã nguồn giải pháp (\texttt{ITCareerPlatform.slnx}) phải biên dịch thành công tuyệt đối trên .NET 10 SDK với \textbf{0 Warning, 0 Error}.
+    \item \textbf{Kiểm thử tự động đạt 100\% (Automated Testing Green):} Toàn bộ bài kiểm thử tự động trong dự án \texttt{ITCareerPlatform.Tests} (sử dụng xUnit và SQLite In-Memory) phải chạy thành công \textbf{100\% xanh (PASSED)}, không có bất kỳ bài test nào bị lỗi (\textit{Failed}) hoặc bị bỏ qua (\textit{Skipped}).
+    \item \textbf{Toàn vẹn cơ sở dữ liệu:} Các thao tác cập nhật dữ liệu đa thực thể (đổi trạng thái đơn, thêm lịch sử timeline, đưa thư vào Outbox) bắt buộc phải nằm trong cùng một giao dịch CSDL (Transaction) để chống mất mát dữ liệu khi có sự cố.
+    \item \textbf{Bảo mật và Phân quyền nghiêm ngặt:}
+    \begin{itemize}
+        \item Mật khẩu bắt buộc được băm bằng BCrypt; phiên đăng nhập được kiểm soát thông qua \texttt{SecurityStamp}.
+        \item Ngăn chặn hoàn toàn việc leo quyền ngang: Mentor chỉ được phép xem và thao tác trên ứng viên nộp vào tin của chính mình; Admin chỉ có quyền xem danh sách tin và ứng viên ở chế độ giám sát.
+        \item 100\% các biểu mẫu POST đều phải mang token bảo vệ chống tấn công CSRF (\texttt{<AntiforgeryField />}) và có route tương ứng trong \texttt{Program.cs}.
+        \item Toàn bộ tệp CV tải lên phải vượt qua bộ lọc an ninh \texttt{CvScanner} (chặn tệp thực thi MZ/ELF và virus EICAR).
+    \end{itemize}
+    \item \textbf{Trải nghiệm giao diện chuẩn hóa:} Các trường dữ liệu bắt buộc phải có thuộc tính kiểm tra HTML5 native (\texttt{required}, \texttt{minlength}, \texttt{min}, \texttt{max}) kết hợp với trình xử lý lỗi tiếng Việt \texttt{data-vi-validate} trong \texttt{App.razor}.
+    \item \textbf{Tích hợp liên tục (CI Pass):} Mã nguồn đẩy lên GitHub phải vượt qua luồng kiểm tra tự động của GitHub Actions (\texttt{restore} $\rightarrow$ \texttt{build} $\rightarrow$ \texttt{test}).
+    \item \textbf{Khả năng đóng gói container:} Hệ thống phải khởi chạy ổn định thông qua Docker Compose (\texttt{docker compose up --build}) trên môi trường sạch mà không phát sinh lỗi cấu hình.
+\end{enumerate}
+
+\section{Kịch bản kiểm thử toàn diện (Test Cases Matrix)}
+\label{sec:kich-ban-kiem-thu}
+
+Bảng~\ref{tab:test-cases-matrix} tổng hợp các ca kiểm thử tiêu biểu đại diện cho 8 phân hệ chức năng cốt lõi của hệ thống, được trích xuất từ các tài liệu kiểm định thực tế (\texttt{BAO\_CAO\_KIEM\_THU.md}, \texttt{N2\_TEST\_BUILD\_REPORT.md} và mã nguồn xUnit).
+
+{\small
+\begin{longtable}{p{1.6cm} p{2.2cm} p{2.7cm} p{3.4cm} p{3.4cm} c}
+\caption{Ma trận kịch bản kiểm thử toàn diện hệ thống IT Career Platform} \label{tab:test-cases-matrix} \\
+\toprule
+\textbf{ID} & \textbf{Chức năng} & \textbf{Tiền điều kiện (Preconditions)} & \textbf{Các bước thực hiện \& Dữ liệu kiểm thử} & \textbf{Kết quả mong đợi (Expected Result)} & \textbf{Kết quả} \\
+\midrule
+\endfirsthead
+\multicolumn{6}{c}{\textit{(Tiếp theo Bảng~\ref{tab:test-cases-matrix})}} \\
+\toprule
+\textbf{ID} & \textbf{Chức năng} & \textbf{Tiền điều kiện} & \textbf{Các bước thực hiện \& Dữ liệu} & \textbf{Kết quả mong đợi} & \textbf{Kết quả} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r}{\textit{Xem tiếp trang sau...}} \\
+\bottomrule
+\endfoot
+\bottomrule
+\endlastfoot
+\textbf{TC-AUTH01} & Đăng ký với MK ngắn & Chưa đăng nhập, mở \texttt{/register} & Nhập mật khẩu \texttt{"abc"} ($<8$ ký tự), bấm Đăng ký & Bị chặn bởi HTML5 \texttt{minlength="8"} và server báo lỗi & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-AUTH02} & Khóa user \& chặn login & Đăng nhập Admin, mở \texttt{/users} & Bấm Khóa tài khoản \texttt{khoa@itcp.vn}, sau đó đăng nhập Khoa & Bị từ chối cấp Cookie, chuyển hướng \texttt{/login?error=1} & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-AUTH03} & Admin tự khóa chính mình & Đăng nhập bằng \texttt{admin@itcp.vn} & Thử gửi request khóa chính ID của mình tại \texttt{/users} & Nút khóa bị vô hiệu, backend chặn và báo lỗi rõ ràng & \textbf{PASS} \\
+\midrule
+\textbf{TC-JOB01} & Tạo tin với lương âm & Mentor đã đăng nhập, mở \texttt{/jobs/new} & Nhập Lương Max ($15$) $<$ Lương Min ($20$) & Hệ thống chặn lưu, báo lỗi \texttt{SalaryMaxLessThanMin} & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-JOB02} & Lọc Job theo Location & Danh sách tin có Job tại "Hà Nội" & Tìm kiếm với các từ khóa: \texttt{"hà nội"}, \texttt{"HÀ NỘI"}, \texttt{"hÀ NộI"} & Trả về đúng tin tuyển dụng tại Hà Nội trên cả SQLite và SQL Server & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-JOB03} & Phân quyền sửa tin & Mentor A xem tin của Mentor B & Cố tình truy cập trang sửa \texttt{/jobs/\{id\}/edit} của tin người khác & Bị chặn ở tầng Service, ném lỗi không có quyền chỉnh sửa & \textbf{PASS} \\
+\midrule
+\textbf{TC-CAND01} & Xác thực URL GitHub & Sinh viên mở trang \texttt{/profile} & Nhập liên kết \texttt{https://facebook.com/abc} vào ô GitHub & Bị chặn bởi \texttt{CheckUrl}, báo URL GitHub không hợp lệ & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-SEC01} & Quét CV chữ ký EICAR & Sinh viên mở trang tải CV & Tải lên tệp chứa chuỗi chữ ký thử virus EICAR & \texttt{CvScanner} nhận diện mã độc, từ chối lưu tệp & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-SEC02} & Quét tệp thực thi MZ & Sinh viên mở trang tải CV & Đổi tên tệp \texttt{.exe} thành \texttt{cv.pdf} rồi tải lên & Bị chặn bởi kiểm tra Magic Bytes (\texttt{MZ}), báo tệp thực thi & \textbf{PASS} \\
+\midrule
+\textbf{TC-APP01} & Nộp đơn khi thiếu CV & Sinh viên mới đăng ký tài khoản & Bấm Ứng tuyển vào một tin đang mở & Bị chặn, nút đổi thành "Hoàn thiện hồ sơ để ứng tuyển" & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-APP02} & Đóng băng snapshot CV & Sinh viên nộp đơn có CV A & Cập nhật CV B mới trong Profile, sau đó kiểm tra lại đơn cũ & Đơn cũ vẫn giữ nguyên nội dung bản chụp CV A ban đầu & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-APP03} & Chặn nộp đơn trùng & Sinh viên đã nộp đơn vào Job X & Thử nộp đơn lần 2 vào Job X & Hệ thống từ chối, bắt \texttt{DbUpdateException} unique index & \textbf{PASS} \\
+\midrule
+\textbf{TC-AI01} & Đánh giá trùng khớp cao & Ứng viên C\#/.NET nộp Backend .NET & Kích hoạt đánh giá AI cho hồ sơ Lan & Điểm phù hợp $\ge 67\%$, hiển thị đủ Điểm mạnh và Lộ trình & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-AI02} & Fallback khi thiếu key & Để trống \texttt{Gemini:ApiKey} & Kích hoạt đánh giá AI cho hồ sơ bất kỳ & Ứng dụng không crash, Heuristic tự chạy, gắn nhãn Offline & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-AI03} & Tính tất định Heuristic & Không có key Gemini, chạy Heuristic & Chạy đánh giá 2 lần liên tiếp cho cùng 1 đơn ứng tuyển & Kết quả điểm số \% của 2 lần gọi hoàn toàn bằng nhau & \textbf{PASS} \\
+\midrule
+\textbf{TC-HR01} & Chốt điểm Mentor & Mentor xem chi tiết đơn & Nhập điểm \texttt{HrScore = 85}, ghi chú \texttt{HrNote} & Điểm cuối \texttt{FinalScore} chuyển thành 85, lưu vết người chấm & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-HR02} & Chuyển trạng thái sai & Đơn ở trạng thái "Trúng tuyển" & Cố tình gửi request đổi về "Đã nộp" & Máy trạng thái \texttt{CanTransition} chặn đứng request bất hợp lệ & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-HR03} & Mời PV sinh tệp \texttt{.ics} & Đơn "Đã nộp", nhập lịch hẹn & Bấm gửi lời mời phỏng vấn & Hàng đợi \texttt{EmailOutbox} ghi nhận email kèm tệp \texttt{interview.ics} & \textbf{PASS} \\
+\midrule
+\textbf{TC-UI01} & Modal đặt lại MK & Admin tại \texttt{/users}, bấm Đặt lại MK & Bấm nút "Gợi ý", sau đó bấm Xác nhận & Gợi ý chuỗi mật khẩu mạnh qua API, modal hiện kết quả an toàn & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-UI02} & Duyệt tài khoản HR & HR đăng ký mới tại \texttt{/register-hr} & Admin vào \texttt{/users/pending}, bấm "Duyệt" & Tài khoản HR được kích hoạt, biến khỏi danh sách chờ & \textbf{PASS} \\
+\addlinespace
+\textbf{TC-UI03} & Lịch sử câu hỏi PV & Sinh viên tạo bộ câu hỏi 2 lần & Mở khối "Lịch sử câu hỏi đã tạo" & Hiển thị đủ 2 bộ câu hỏi cũ theo thứ tự mới nhất kèm gợi ý & \textbf{PASS} \\
+\midrule
+\textbf{TC-DOCK01} & Triển khai Docker & Môi trường sạch chưa cài .NET/SQL & Chạy \texttt{docker compose up --build} & Web chạy cổng 8080, SQL chạy cổng 1433, tự seed dữ liệu mẫu & \textbf{PASS} \\
+\end{longtable}
+}
+
+\section{Tổng hợp kết quả kiểm thử qua các giai đoạn}
+\label{sec:tong-hop-ket-qua}
+
+Quá trình phát triển và kiểm định chất lượng của dự án IT Career Platform được chia thành 3 mốc kiểm thử chính yếu, phản ánh sự trưởng thành vững chắc về độ ổn định và độ tin cậy của mã nguồn:
+
+\subsection{Giai đoạn 1: Kiểm thử sơ bộ Sprint 3 (Ngày 06/09/2026)}
+\begin{itemize}
+    \item Nguồn kiểm chứng: Báo cáo kiểm thử toàn diện \texttt{BAO\_CAO\_KIEM\_THU.md}.
+    \item Tổng số ca kiểm thử thực hiện: 62 ca (gồm 35 automated unit tests xUnit và 27 kịch bản thủ công).
+    \item Kết quả: 59 ca \textbf{PASS} (đạt 95.2\%), 0 ca \textbf{FAIL}, 3 ca ghi nhận trạng thái chưa cài đặt hoặc cần chỉnh sửa tài liệu:
+    \begin{enumerate}
+        \item \textit{A5 (Rate Limiter cho AI):} Chưa có middleware giới hạn tần suất gọi API $\rightarrow$ Ghi nhận trung thực vào báo cáo.
+        \item \textit{C1 \& C2 (Sơ đồ Use Case và Sequence):} Cần đồng bộ tên phương thức từ \texttt{ScoreCv()} thành \texttt{EvaluateAsync()} cho khớp với mã nguồn.
+    \end{enumerate}
+    \item Các phát hiện tinh chỉnh: Dữ liệu seed ứng viên Khoa là Frontend thay vì Backend; toán tử so khớp màu điểm dùng biên \texttt{> 70} thay vì \texttt{>= 70}.
+\end{itemize}
+
+\subsection{Giai đoạn 2: Kiểm định phân hệ N2 Sprint 4 (Ngày 13/09/2026)}
+\begin{itemize}
+    \item Nguồn kiểm chứng: Báo cáo kỹ thuật \texttt{N2\_TEST\_BUILD\_REPORT.md}.
+    \item Tổng số bài kiểm thử đơn vị: \textbf{59 / 59 tests PASSED (100\%)}.
+    \item Trọng tâm nghiệm thu: Xác minh tính không phân biệt hoa thường của bộ lọc Location (qua SQLite custom lower function và SQL Server CI collation), kiểm tra 100\% các thuộc tính validation native trên form HTML, và điều hướng route \texttt{/cv-templates}.
+\end{itemize}
+
+\subsection{Giai đoạn 3: Nghiệm thu toàn diện Sprint 4 (Ngày 20/09/2026)}
+\begin{itemize}
+    \item Nguồn kiểm chứng: \path{BAO_CAO_KIEM_TRA_GIAO_DIEN_ATS.md} và \path{BAO_CAO_TRIEN_KHAI_UI_ATS_LAN_2.md}.
+    \item Kết quả biên dịch: \texttt{dotnet build} đạt \textbf{0 Warning, 0 Error}.
+    \item Kết quả kiểm thử tự động toàn diện:
+    \begin{equation}
+    \text{Passed: } 415, \quad \text{Failed: } 0, \quad \text{Skipped: } 0, \quad \text{Total: } 415 \quad (\text{Thời gian: } 51 \text{ giây})
+    \end{equation}
+    \item \textbf{Tỷ lệ vượt qua (Pass Rate):}
+    \begin{equation}
+    \text{Pass Rate} = \frac{\text{Passed}}{\text{Total Executed}} \times 100\% = \frac{415}{415} \times 100\% = \mathbf{100.0\%}
+    \end{equation}
+    \item Xác minh an toàn tuyệt đối: 100\% biểu mẫu POST mới đều có endpoint tương ứng và mang token \texttt{<AntiforgeryField />}; luồng duyệt HR và lịch sử câu hỏi phỏng vấn đạt 100\% tiêu chuẩn nghiệm thu.
+\end{itemize}
+
+\section{Đánh giá Increment qua từng chu kỳ Sprint}
+\label{sec:danh-gia-increment}
+
+Quy trình quản lý dự án phần mềm theo khung Scrum đòi hỏi mỗi Sprint phải kết thúc bằng một \textbf{Product Increment} có thể sử dụng được và mang lại giá trị gia tăng rõ rệt cho các bên liên quan. Bảng~\ref{tab:sprint-increments-eval} tổng hợp bức tranh toàn cảnh về tiến trình thực thi qua 4 Sprint của dự án IT Career Platform.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Bảng tổng hợp và đánh giá Product Increment qua 4 Sprint phát triển}
+\label{tab:sprint-increments-eval}
+\begin{tabularx}{\textwidth}{c p{2.8cm} c c r c X}
+\toprule
+\textbf{Sprint} & \textbf{Sprint Goal} & \textbf{Plan} & \textbf{Done} & \textbf{Pts} & \textbf{Kiểm thử} & \textbf{Sản phẩm tăng trưởng bàn giao (Increment)} \\
+\midrule
+\textbf{Sprint 1} & Xác thực người dùng và phân quyền & 7 & 7 & 27 & Pass 100\% (20 tests) & Nền tảng phân quyền 3 vai trò, Cookie Auth, CRUD tin tuyển dụng IT chuẩn hóa. \\
+\addlinespace
+\textbf{Sprint 2} & Xây dựng hành trình của sinh viên & 6 & 6 & 37 & Pass 100\% (35 tests) & Phân hệ sinh viên: Hồ sơ IT, \texttt{CvScanner} quét mã độc, ứng tuyển đóng băng CV. \\
+\addlinespace
+\textbf{Sprint 3} & Bộ lọc CV thông minh cho Mentor/HR & 8 & 8 & 53 & Pass 100\% (59 tests) & Đánh giá AI Gemini, dự phòng Heuristic offline tất định, quy trình ATS 5 trạng thái, thông báo. \\
+\addlinespace
+\textbf{Sprint 4} & Hoàn thiện tính năng \& Đóng gói & 15 & 15 & 73 & Pass 100\% (415 tests) & Chuẩn hóa UTC, bảo vệ dữ liệu Nghị định 13, duyệt HR, hàng đợi email Outbox (\texttt{.ics}), Docker. \\
+\midrule
+\multicolumn{2}{l}{\textbf{Toàn bộ dự án}} & \textbf{36} & \textbf{36} & \textbf{190} & \textbf{Pass 100\%} & \textbf{Hệ thống IT Career Platform v2 sẵn sàng nghiệm thu và phát hành} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Kết luận chương:} Toàn bộ quá trình kiểm thử phần mềm đã chứng minh hệ thống IT Career Platform vận hành cực kỳ ổn định, bảo đảm tính toàn vẹn dữ liệu và an toàn thông tin cao. Việc kết hợp chặt chẽ giữa bộ kiểm thử tự động xUnit (415 tests) với cơ chế bảo vệ kép tại tầng dịch vụ và biểu mẫu đã tạo nên một sản phẩm phần mềm chất lượng cao, hoàn toàn đáp ứng các tiêu chí học thuật và thực tiễn của môn học Quản lý Dự án Công nghệ Thông tin.

@@ -1,0 +1,125 @@
+\chapter{QUẢN LÝ YÊU CẦU VÀ PRODUCT BACKLOG}
+\label{chap:quan-ly-yeu-cau}
+
+\section{Thu thập và Ưu tiên yêu cầu bằng kỹ thuật MoSCoW}
+\label{sec:moscow}
+
+Trong giai đoạn phân tích nghiệp vụ ban đầu, nhóm phát triển đã tiến hành khảo sát và thu thập một danh mục đồ sộ gồm \textbf{68 User Stories ban đầu}, bao quát toàn bộ các ngóc ngách của một sàn thương mại điện tử tuyển dụng nhân lực IT (từ đăng ký, đăng tin, ứng tuyển, phỏng vấn trực tuyến, đánh giá năng lực, thanh toán phí dịch vụ đến mạng xã hội nghề nghiệp). 
+
+Tuy nhiên, đối chiếu với nguồn lực giới hạn của một nhóm 5 sinh viên và ràng buộc khung thời gian 4 Sprint của học phần, bài toán đặt ra là: \textbf{Làm thế nào để kiểm soát phạm vi (Scope Control) và ngăn chặn triệt để hiện tượng phình to phạm vi (Scope Creep)?} \cite{pressman2020}. Nếu cố gắng dàn trải cài đặt toàn bộ 68 User Stories, nhóm chắc chắn sẽ đối mặt với tình trạng trễ hạn bàn giao hoặc tạo ra một hệ thống chứa đầy lỗi kỹ thuật và không có chiều sâu nghiệp vụ.
+
+Nhóm đã áp dụng kỹ thuật phân loại và ưu tiên yêu cầu \textbf{MoSCoW} do Dai Clegg phát triển \cite{clegg1994}, phân bổ 68 User Stories thành 4 nhóm chiến lược như trình bày trong Bảng~\ref{tab:moscow-summary}.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Bảng phân loại yêu cầu nghiệp vụ theo kỹ thuật MoSCoW}
+\label{tab:moscow-summary}
+\begin{tabularx}{\textwidth}{l r p{5.5cm} X}
+\toprule
+\textbf{Nhóm MoSCoW} & \textbf{Số lượng} & \textbf{User Stories tiêu biểu} & \textbf{Căn cứ \& Lý do lựa chọn} \\
+\midrule
+\textbf{Must-have} \newline (Bắt buộc phải có) & 18 & ATS-01, ATS-02, ATS-03, ATS-04, ATS-05, ATS-06, ATS-07, ATS-08, ATS-09, ATS-10, ATS-11, ATS-12, SEC-01, TST-01..03. & Đây là các chức năng sống còn cấu thành một hệ thống ATS cơ bản: Quản lý tài khoản, phân quyền Role, đăng tin tuyển dụng, tạo hồ sơ IT, quét CV an toàn và ứng tuyển đóng băng snapshot CV. Thiếu các tính năng này, hệ thống không thể vận hành. \\
+\addlinespace
+\textbf{Should-have} \newline (Nên có / Trọng yếu) & 16 & ATS-13, ATS-14, ATS-15, ATS-16, ATS-17, NTF-01, P0-1..4, P1-1..5, UI-3, HIST. & Tạo nên giá trị khác biệt cốt lõi của đồ án: Đánh giá độ phù hợp bằng Google Gemini, thuật toán Offline Heuristic Fallback, quy trình 5 trạng thái, thông báo đổi trạng thái, tự kiểm tra năng lực và gửi email kèm file lịch hẹn \texttt{.ics}. \\
+\addlinespace
+\textbf{Could-have} \newline (Có thể có nếu dư nguồn lực) & 12 & ATS-18, P2-1, P2-2, P2-3, N2.H, UI-4, UI-8..12, Toolkit. & Các tính năng gia tăng trải nghiệm người dùng: Dashboard phân tích dữ liệu với Chart.js, xuất báo cáo CSV, phân trang DTO tối ưu hiệu năng, kho mẫu CV và lưu trữ tệp CV trừu tượng sang Blob Storage. \\
+\addlinespace
+\textbf{Won't-have} \newline (Tạm hoãn ở phạm vi hiện tại) & 22 & Thanh toán phí đăng tin tuyển dụng, phỏng vấn video trực tuyến tích hợp WebRTC, đăng nhập mạng xã hội OAuth2 (Google/GitHub), dịch vụ quét virus ClamAV chạy nền, kiến trúc SaaS đa trường đại học. & Các tính năng nằm ngoài phạm vi cốt lõi của đồ án quản lý dự án, đòi hỏi hạ tầng tài chính phức tạp hoặc dịch vụ trả phí, được thống nhất ghi nhận vào Backlog nâng cấp ở các phiên bản thương mại tương lai. \\
+\midrule
+\textbf{Tổng cộng} & \textbf{68} & \multicolumn{2}{l}{\textbf{100\% User Stories ban đầu đã được phân tích và kiểm soát phạm vi khoa học}} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Nhờ kỹ thuật MoSCoW, nhóm đã chọn lọc chính xác \textbf{46 User Stories} (thuộc các nhóm Must-have, Should-have và một phần Could-have) để đưa vào lộ trình thực thi 4 Sprint, bảo đảm 100\% tính năng cam kết đều được hiện thực hóa trọn vẹn và kiểm thử xanh trong mã nguồn.
+
+\section{Kỹ thuật ước lượng khối lượng công việc (Planning Poker)}
+\label{sec:planning-poker}
+
+Để ước lượng quy mô và độ phức tạp của từng hạng mục công việc trong Product Backlog, nhóm áp dụng phương pháp \textbf{Planning Poker} kết hợp dãy số Fibonacci chuẩn hóa \cite{cohn2005}:
+\begin{equation}
+\text{Dãy số ước lượng:} \quad 1, \; 2, \; 3, \; 5, \; 8, \; 13, \; 21, \; \dots
+\end{equation}
+
+\subsection{Nguyên tắc không quy đổi trực tiếp Story Point ra giờ làm việc}
+Nhóm quán triệt sâu sắc nguyên lý cốt lõi của Agile: \textbf{Story Point là thước đo tương đối về quy mô tổng thể của công việc, tuyệt đối không đồng nhất trực tiếp với số giờ làm việc (Ideal Hours)}. Đơn vị Story Point được xác định dựa trên sự kết hợp của 5 yếu tố đa chiều:
+\begin{enumerate}
+    \item \textbf{Độ phức tạp nghiệp vụ (Complexity):} Mức độ phức tạp của các quy tắc xử lý (ví dụ: máy trạng thái luồng đơn ứng tuyển phức tạp hơn thao tác CRUD danh mục đơn thuần).
+    \item \textbf{Sự không chắc chắn (Uncertainty):} Khả năng phát sinh sự cố khi tích hợp dịch vụ mới (điển hình là độ trễ mạng và hạn ngạch của Google Gemini API).
+    \item \textbf{Nỗ lực kỹ thuật (Effort):} Khối lượng dòng lệnh cần viết, số lượng bảng CSDL cần can thiệp và thiết kế giao diện.
+    \item \textbf{Mức độ phụ thuộc (Dependencies):} Sự ràng buộc giữa các module (ví dụ: chức năng đánh giá AI phụ thuộc vào việc hoàn thiện cấu trúc Job và CV Snapshot).
+    \item \textbf{Độ khó phi chức năng (Technical Difficulty):} Các yêu cầu về an ninh (băm BCrypt, quét mã độc EICAR), tuân thủ pháp lý (Nghị định 13) và tối ưu hóa hiệu năng (loại bỏ bài toán $N+1$ query).
+\end{enumerate}
+
+\subsection{Quy ước thang điểm Story Point thực tế của nhóm}
+\begin{itemize}
+    \item \textbf{1--2 Points (Nhỏ/Đơn giản):} Thêm trường thông tin, sửa nhãn giao diện, cấu hình route, viết test đơn giản (ví dụ: đổi cột ID sang Ngày tạo trên UI-5).
+    \item \textbf{3--5 Points (Trung bình):} Xây dựng màn hình mới kèm validation, viết service nghiệp vụ có giao dịch CSDL (ví dụ: CRUD tin tuyển dụng ATS-04, Hồ sơ cá nhân ATS-08, Duyệt tài khoản HR UI-3).
+    \item \textbf{8 Points (Lớn/Phức tạp):} Tích hợp dịch vụ ngoại vi, xử lý tệp nhị phân, logic kiểm soát quyền đa tầng (ví dụ: Tải CV và quét an toàn SEC-01, Đóng băng snapshot CV ATS-10, Hàng đợi email Outbox kèm file \texttt{.ics} P1-3).
+    \item \textbf{13 Points (Cực kỳ phức tạp/Nghiên cứu sâu):} Thiết kế và tích hợp AI Gemini kèm cơ chế Heuristic Offline Fallback bảo đảm tính sẵn sàng cao (ATS-13/14).
+\end{itemize}
+
+\section{Danh sách Product Backlog chính của hệ thống}
+\label{sec:product-backlog}
+
+Bảng~\ref{tab:product-backlog} tổng hợp chi tiết Product Backlog của dự án IT Career Platform, bao gồm các User Stories cốt lõi đã được kiểm chứng và nghiệm thu hoàn thành trong mã nguồn.
+
+\begin{longtable}{p{1.2cm} p{5.5cm} c c r c c}
+\caption{Danh sách Product Backlog chính và phân bổ thực thi qua các Sprint} \label{tab:product-backlog} \\
+\toprule
+\textbf{ID} & \textbf{Nội dung User Story} & \textbf{Priority} & \textbf{MoSCoW} & \textbf{Point} & \textbf{Sprint} & \textbf{Status} \\
+\midrule
+\endfirsthead
+\multicolumn{7}{c}{\textit{(Tiếp theo Bảng~\ref{tab:product-backlog})}} \\
+\toprule
+\textbf{ID} & \textbf{Nội dung User Story} & \textbf{Priority} & \textbf{MoSCoW} & \textbf{Point} & \textbf{Sprint} & \textbf{Status} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{7}{r}{\textit{Xem tiếp trang sau...}} \\
+\bottomrule
+\endfoot
+\bottomrule
+\endlastfoot
+ATS-01 & Quản lý danh sách người dùng và khóa tài khoản & High & Must & 3 & Sprint 1 & Done \\
+ATS-02 & Ghi nhật ký kiểm toán hệ thống (\texttt{AuditLog}) & High & Must & 3 & Sprint 1 & Done \\
+ATS-03 & Xác thực Cookie Auth và phân quyền theo Role & High & Must & 5 & Sprint 1 & Done \\
+ATS-04 & Đăng tin tuyển dụng IT với Category, Tech, Level & High & Must & 5 & Sprint 1 & Done \\
+ATS-05 & Cập nhật và đóng tin tuyển dụng IT & High & Must & 3 & Sprint 1 & Done \\
+ATS-06 & Quản lý trạng thái mở/đóng tin và kiểm tra hạn & Medium & Must & 3 & Sprint 1 & Done \\
+ATS-07 & Tìm kiếm và đa bộ lọc việc làm IT đa tiêu chí & High & Must & 5 & Sprint 1 & Done \\
+\midrule
+ATS-08 & Xây dựng hồ sơ IT (GitHub, LinkedIn, Tags, KN) & High & Must & 5 & Sprint 2 & Done \\
+ATS-09 & Tải lên và quản lý tệp CV (PDF/DOCX max 5MB) & High & Must & 5 & Sprint 2 & Done \\
+SEC-01 & Quét CV an toàn (chặn thực thi MZ/ELF, EICAR) & High & Must & 8 & Sprint 2 & Done \\
+ATS-10 & Ứng tuyển và đóng băng bản chụp CV snapshot & Critical & Must & 8 & Sprint 2 & Done \\
+EXT-01 & Đăng ký tài khoản Sinh viên IT tự do & High & Must & 3 & Sprint 2 & Done \\
+P0-4 & Sinh viên rút đơn ứng tuyển khi đang mở & Medium & Should & 3 & Sprint 2 & Done \\
+\midrule
+ATS-11 & Mentor xem danh sách ứng viên nộp theo tin & High & Must & 5 & Sprint 3 & Done \\
+ATS-12 & Xem chi tiết hồ sơ ứng viên và tải CV gốc & High & Must & 3 & Sprint 3 & Done \\
+ATS-13 & AI Gemini phân tích độ phù hợp và sinh lộ trình & Critical & Should & 13 & Sprint 3 & Done \\
+ATS-14 & Cơ chế dự phòng Heuristic Offline Matcher & Critical & Should & 8 & Sprint 3 & Done \\
+ATS-15 & Tự động xếp hạng ứng viên và phân màu điểm & High & Should & 3 & Sprint 3 & Done \\
+ATS-16 & Quyết định tuyển dụng Human-in-the-loop & High & Should & 5 & Sprint 3 & Done \\
+ATS-17 & Quản lý quy trình 5 trạng thái và lưu Timeline & High & Should & 5 & Sprint 3 & Done \\
+NTF-01 & Hệ thống thông báo chuông cho sinh viên & Medium & Should & 3 & Sprint 3 & Done \\
+\midrule
+P0-2 & Chuẩn hóa múi giờ UTC và hiển thị giờ VN & High & Should & 5 & Sprint 4 & Done \\
+P0-3 & Admin đặt lại mật khẩu ngẫu nhiên an toàn & High & Should & 5 & Sprint 4 & Done \\
+P1-1 & Thực thể Công ty (\texttt{Company}) gắn vào tin & High & Should & 5 & Sprint 4 & Done \\
+P1-2 & Sinh viên tự kiểm tra độ phù hợp (\textit{SelfCheck}) & Medium & Should & 5 & Sprint 4 & Done \\
+P1-3 & Hàng đợi email Outbox và tệp lịch \texttt{.ics} & High & Should & 8 & Sprint 4 & Done \\
+P1-4 & Chuẩn hóa luồng trạng thái nghiêm ngặt & High & Should & 5 & Sprint 4 & Done \\
+P2-3 & Tuân thủ bảo vệ dữ liệu cá nhân (Nghị định 13) & High & Should & 8 & Sprint 4 & Done \\
+UI-1 & Hộp thoại đặt lại MK nhập tay, gợi ý mật khẩu & Medium & Should & 3 & Sprint 4 & Done \\
+UI-2 & Đăng ký tài khoản HR ngoài kiểm duyệt & High & Should & 3 & Sprint 4 & Done \\
+UI-3 & Trang Admin duyệt tài khoản HR chờ duyệt & High & Should & 5 & Sprint 4 & Done \\
+UI-4 & Lịch sử câu hỏi phỏng vấn cho sinh viên & Medium & Should & 3 & Sprint 4 & Done \\
+UI-13 & Trang xem JD chỉ đọc cho Admin/Mentor & Medium & Could & 3 & Sprint 4 & Done \\
+ATS-18 & Bảng điều khiển trực quan hóa với Chart.js & Medium & Could & 5 & Sprint 4 & Done \\
+TST-01 & Tự động hóa kiểm thử hồi quy 415 tests & Critical & Must & 8 & Sprint 4 & Done \\
+\midrule
+\multicolumn{4}{l}{\textbf{Tổng cộng toàn bộ các Sprint}} & \textbf{190} & \multicolumn{2}{r}{\textbf{100\% HOÀN THÀNH}} \\
+\end{longtable}

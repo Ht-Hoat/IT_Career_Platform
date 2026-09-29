@@ -1,0 +1,159 @@
+\chapter{PHƯƠNG PHÁP QUẢN LÝ VÀ TỔ CHỨC DỰ ÁN}
+\label{chap:quan-ly-to-chuc}
+
+\section{Phân tích mô hình 4P trong Quản lý Dự án Phần mềm}
+\label{sec:mo-hinh-4p}
+
+Theo lý thuyết quản trị kỹ nghệ phần mềm của Roger S. Pressman \cite{pressman2020}, sự thành bại của một dự án phần mềm được quyết định bởi 4 yếu tố cốt lõi (Mô hình 4P): \textbf{Con người (People)}, \textbf{Sản phẩm (Product)}, \textbf{Quy trình (Process)}, và \textbf{Dự án (Project)}. Việc phân tích thấu đáo 4 thành tố này là nền tảng giúp nhóm dự án định hình phương pháp luận và kiểm soát toàn diện vòng đời phát triển phần mềm.
+
+\subsection{Yếu tố Con người (People)}
+Con người là nhân tố trung tâm, quyết định chất lượng kỹ thuật và năng suất của toàn bộ dự án. Trong dự án IT Career Platform, yếu tố People bao gồm hai nhóm chính:
+\begin{itemize}
+    \item \textbf{Đội ngũ phát triển (Development Team):} Quy mô nhóm gồm 5 thành viên (đáp ứng nguyên tắc \textit{Two-Pizza Team} trong Scrum). Về kỹ năng chuyên môn, nhóm tập hợp các năng lực cần thiết cho một giải pháp Web hiện đại: lập trình backend .NET 10, thiết kế cơ sở dữ liệu quan hệ SQL Server, phát triển giao diện Blazor Server SSR, kỹ thuật xử lý ngôn ngữ tự nhiên với API Prompt Engineering, và kiểm thử phần mềm tự động hóa với xUnit.
+    \item \textbf{Các bên liên quan và người dùng cuối:} Bao gồm sinh viên IT (đối tượng cần trau dồi kỹ năng và tìm kiếm việc làm), các chuyên gia kỹ thuật/nhà tuyển dụng (đối tượng cần tối ưu năng suất tuyển chọn ứng viên), và Quản trị viên hệ thống (đối tượng vận hành hạ tầng). Sự thấu hiểu tâm lý và trải nghiệm người dùng của từng nhóm đối tượng là cơ sở để thiết kế các luồng giao diện tối ưu.
+\end{itemize}
+
+\subsection{Yếu tố Sản phẩm (Product)}
+Sản phẩm là kết quả bàn giao của dự án, nhằm giải quyết trọn vẹn các bài toán đặt ra trong phạm vi:
+\begin{itemize}
+    \item \textbf{Định vị sản phẩm:} IT Career Platform là một hệ sinh thái tuyển dụng và hướng nghiệp ngách, kết hợp chặt chẽ giữa tính năng quản lý quy trình ứng viên (ATS) và trí tuệ nhân tạo (AI).
+    \item \textbf{Giá trị cốt lõi mang lại:} Khác biệt lớn nhất của sản phẩm so với các nền tảng tuyển dụng truyền thống trên thị trường là nguyên lý \textit{Win-Win}: Nhà tuyển dụng có công cụ lọc ứng viên thông minh với độ chính xác cao; trong khi Sinh viên nhận được phân tích chuyên sâu về điểm mạnh, điểm yếu và lộ trình học tập cụ thể theo từng vị trí ứng tuyển.
+    \item \textbf{Phạm vi sản phẩm:} Được đóng gói trọn vẹn trong 18 User Stories cốt lõi (ATS-01 đến ATS-18) cùng các phân hệ mở rộng về bảo mật, hàng đợi email, quản trị công ty và hỗ trợ giao diện đa nền tảng.
+\end{itemize}
+
+\subsection{Yếu tố Quy trình (Process)}
+Quy trình định nghĩa phương thức và chuỗi hoạt động mà đội ngũ áp dụng để tạo ra sản phẩm:
+\begin{itemize}
+    \item \textbf{Khung phương pháp Agile/Scrum:} Nhóm lựa chọn khung làm việc Scrum \cite{scrumguide2020} với tính linh hoạt cao, cho phép tiếp nhận phản hồi và chuyển giao sản phẩm tăng trưởng (\textit{Product Increment}) sau mỗi chu kỳ Sprint ngắn hạn (từ 1 đến 2 tuần).
+    \item \textbf{Quy chuẩn kỹ thuật và kiểm thử:} Tuân thủ quy tắc \textit{Definition of Done} (DoD) nghiêm ngặt; áp dụng kiểm thử tự động hồi quy liên tục (Regression Testing) để bảo đảm mã nguồn luôn ở trạng thái sẵn sàng phát hành.
+    \item \textbf{Kiểm soát phiên bản và CI/CD:} Áp dụng quy trình phân nhánh Git (\textit{Gitflow}): các nhánh tính năng (\texttt{feature/*}) được phát triển độc lập, kiểm tra tự động qua GitHub Actions trước khi tích hợp vào nhánh chính (\texttt{main} và \texttt{dev-kiet}).
+\end{itemize}
+
+\subsection{Yếu tố Dự án (Project)}
+Yếu tố Project bao quát việc lập kế hoạch, theo dõi tiến độ, phân bổ nguồn lực và quản trị rủi ro:
+\begin{itemize}
+    \item \textbf{Ràng buộc dự án:} Thời gian biểu diễn ra trong học kỳ môn học (tháng 09/2026), nguồn lực ngân sách tài chính thương mại bằng 0 VNĐ, tài nguyên máy chủ dựa trên hạ tầng máy trạm sinh viên và dịch vụ đám mây miễn phí.
+    \item \textbf{Kiểm soát tiến độ:} Tiến độ được chia thành 4 Sprint cụ thể với mục tiêu rõ ràng. Nhóm sử dụng công cụ quản lý dự án trực quan (Jira Software và GitHub Project) để theo dõi trạng thái công việc và phát hiện sớm các nút thắt kỹ thuật (\textit{bottlenecks}).
+    \item \textbf{Quản lý nợ kỹ thuật (Technical Debt):} Chủ động bố trí các chu kỳ kiểm toán và tái cấu trúc mã nguồn (\textit{Refactoring}) giữa các Sprint nhằm tối ưu hóa hiệu năng truy vấn, loại bỏ mã nguồn chết và vá các lỗ hổng bảo mật tiềm ẩn.
+\end{itemize}
+
+\section{Tổ chức nhóm theo Scrum Roles}
+\label{sec:scrum-roles}
+
+Để vận hành quy trình phát triển theo chuẩn Scrum Guide 2020 \cite{scrumguide2020}, nhóm dự án phân định trách nhiệm cụ thể giữa các thành viên. Nguyên tắc quan trọng nhất là tuân thủ dữ liệu thực tế: \textbf{Mọi thông tin thành viên và vai trò phải được đối chiếu từ dữ liệu Git, mã nguồn và tài liệu nội bộ, tuyệt đối không tự bịa đặt danh tính.}
+
+Căn cứ vào dữ liệu đóng góp thực tế trên hệ thống quản lý mã nguồn Git (bao gồm 3 tác giả có lịch sử commit trực tiếp: \texttt{Ht-Hoat}, \texttt{nvhung-28} và \texttt{Vo Nguyen Anh Kiet}), cơ cấu tổ chức nhóm được xác lập trong Bảng~\ref{tab:scrum-roles}.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Bảng phân công vai trò và trách nhiệm nhóm theo Scrum}
+\label{tab:scrum-roles}
+\begin{tabularx}{\textwidth}{p{3.2cm} p{2.8cm} X X}
+\toprule
+\textbf{Thành viên} & \textbf{Scrum Role} & \textbf{Trách nhiệm chính} & \textbf{Công việc thực tế trên hệ thống} \\
+\midrule
+\textbf{Ht-Hoat} \newline (\texttt{damm20005}) & \textbf{Product Owner / Lead Dev} & 
+- Quản lý và ưu tiên Product Backlog.\newline
+- Định hướng kiến trúc phần mềm cốt lõi.\newline
+- Phê duyệt Pull Request và tích hợp nhánh. &
+- Khởi tạo kiến trúc nền tảng v2 (commit gốc \texttt{7871ebb}).\newline
+- Thiết lập hạ tầng Docker, CI/CD GitHub Actions.\newline
+- Tích hợp luồng đăng ký HR và cổng việc làm quốc tế. \\
+\addlinespace
+\textbf{Nguyễn Viết Hùng} \newline (\texttt{nvhung-28}) & \textbf{Core Backend Developer} &
+- Thiết kế mô hình dữ liệu quan hệ EF Core.\newline
+- Hiện thực hóa các dịch vụ nghiệp vụ phức tạp.\newline
+- Tối ưu hóa hiệu năng truy vấn và bảo mật. &
+- Đóng góp 32 commits chuyên sâu về Backend.\newline
+- Phát triển các gói P0, P1, P2 (Company, StatusFlow, Outbox, UTC, Consent).\newline
+- Hoàn thiện nhóm chức năng N1 (Lịch PV, ghi chú nội bộ, đổi MK). \\
+\addlinespace
+\textbf{Võ Nguyên Anh Kiệt} \newline (\texttt{dev-kiet}) & \textbf{Frontend \& QA/Test Developer} &
+- Hiện thực hóa và chuẩn hóa giao diện Blazor.\newline
+- Thiết kế kịch bản và chạy kiểm thử toàn diện.\newline
+- Kiểm định tính toàn vẹn hệ thống và lập báo cáo. &
+- Xây dựng hoàn chỉnh giao diện ATS Sprint 4 (UI-3..UI-13).\newline
+- Hiện thực hóa nhiệm vụ N2 (Validation native, Location case-insensitive).\newline
+- Soạn thảo các báo cáo kỹ thuật \texttt{BAO\_CAO\_KIEM\_THU.md}, \texttt{N2\_TEST\_BUILD\_REPORT.md}. \\
+\addlinespace
+\textbf{Thành viên 4} \newline \textit{[Cần bổ sung]} & \textbf{[CHƯA XÁC ĐỊNH]} \newline \textit{(Đề xuất: Scrum Master / Dev)} &
+- Quản trị tiến độ các sự kiện Scrum.\newline
+- Hỗ trợ loại bỏ các trở ngại (\textit{impediments}).\newline
+- Tham gia rà soát mã nguồn và kiểm thử. &
+\textbf{[CHƯA CÓ DỮ LIỆU COMMIT TRÊN GIT]}\newline
+\textit{(Cần bổ sung danh tính và phân công từ danh sách lớp hoặc biên bản họp nhóm)}. \\
+\addlinespace
+\textbf{Thành viên 5} \newline \textit{[Cần bổ sung]} & \textbf{[CHƯA XÁC ĐỊNH]} \newline \textit{(Đề xuất: Developer / Tester)} &
+- Phát triển chức năng thành phần theo phân công.\newline
+- Kiểm thử chức năng và kiểm thử chấp nhận người dùng (UAT). &
+\textbf{[CHƯA CÓ DỮ LIỆU COMMIT TRÊN GIT]}\newline
+\textit{(Cần bổ sung danh tính và phân công từ danh sách lớp hoặc biên bản họp nhóm)}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Quy trình thực thi các Sự kiện Scrum}
+\label{sec:su-kien-scrum}
+
+Dự án áp dụng đầy đủ 5 sự kiện Scrum tiêu chuẩn \cite{scrumguide2020} nhằm duy trì tính minh bạch, sự thanh tra (\textit{inspection}) và tính thích ứng (\textit{adaptation}):
+
+\subsection{Sprint Planning (Lập kế hoạch Sprint)}
+\begin{itemize}
+    \item \textbf{Mục tiêu:} Xác định Sprint Goal và lựa chọn các User Stories có độ ưu tiên cao nhất từ Product Backlog để đưa vào Sprint Backlog.
+    \item \textbf{Cách thức triển khai:} Nhóm tổ chức phiên họp Planning vào đầu mỗi chu kỳ phát triển. Product Owner trình bày mục tiêu nghiệp vụ; Development Team phân rã Story thành các Task kỹ thuật cụ thể (Backend endpoint, Entity model, Razor component, Unit Test), ước lượng độ phức tạp bằng kỹ thuật Planning Poker và cam kết khối lượng công việc hoàn thành.
+\end{itemize}
+
+\subsection{Daily Scrum (Họp Scrum hàng ngày)}
+\begin{itemize}
+    \item \textbf{Mục tiêu:} Đồng bộ hóa tiến độ, thanh tra công việc trong 24 giờ qua và lập kế hoạch phối hợp cho 24 giờ tiếp theo.
+    \item \textbf{Cách thức triển khai:} Do đặc thù môi trường học tập, nhóm duy trì các buổi Daily Scrum ngắn gọn (15 phút) thông qua kênh trao đổi trực tuyến và cập nhật trạng thái trên bảng Kanban. Mỗi thành viên trả lời 3 câu hỏi kinh điển: (1) Đã hoàn thành công việc gì? (2) Sẽ thực hiện công việc gì tiếp theo? (3) Đang gặp phải khó khăn hay trở ngại kỹ thuật nào cần hỗ trợ?
+\end{itemize}
+
+\subsection{Sprint Review (Đánh giá Sprint)}
+\begin{itemize}
+    \item \textbf{Mục tiêu:} Thanh tra sản phẩm tăng trưởng (\textit{Product Increment}) đã hoàn thành trong Sprint và cập nhật Product Backlog nếu cần thiết.
+    \item \textbf{Cách thức triển khai:} Cuối mỗi Sprint, nhóm thực hiện demo trực tiếp các tính năng chạy được trên môi trường cục bộ hoặc Docker. Minh chứng rõ nét nhất được ghi lại trong các báo cáo kiểm thử nghiệm thu như \texttt{BAO\_CAO\_KIEM\_THU.md} (ngày 06/09/2026) và \texttt{BAO\_CAO\_TRIEN\_KHAI\_UI\_ATS\_LAN\_2.md} (ngày 20/09/2026), nơi từng tiêu chuẩn chấp nhận (Acceptance Criteria) được kiểm chứng độc lập.
+\end{itemize}
+
+\subsection{Sprint Retrospective (Cải tiến Sprint)}
+\begin{itemize}
+    \item \textbf{Mục tiêu:} Nhìn nhận lại quy trình làm việc, sự phối hợp giữa các thành viên và công cụ hỗ trợ để tìm kiếm giải pháp cải tiến chất lượng.
+    \item \textbf{Bài học kinh nghiệm thực tế của nhóm:}
+    \begin{enumerate}
+        \item \textit{Phát hiện lệch dữ liệu Seed (Sprint 1--2):} Phát hiện dữ liệu mẫu ứng viên Khoa là Frontend thay vì Backend dẫn đến điểm AI trả về 33\% thay vì 70\%, nhóm đã rút kinh nghiệm về việc đồng bộ hóa dữ liệu SeedData giữa kịch bản test và mã nguồn.
+        \item \textit{Xử lý nợ kỹ thuật phân quyền (Sprint 3):} Phát hiện lỗ hổng leo quyền ngang khi Mentor có thể truy cập đơn của tin tuyển dụng khác, nhóm đã bổ sung các phương thức kiểm tra chủ quyền (\texttt{CanModify}, \texttt{CanView}) ở tầng Service thay vì chỉ ẩn nút trên giao diện.
+        \item \textit{Quy chuẩn hóa múi giờ (Sprint 4):} Nhận thấy sự lệch giờ giữa Docker container (UTC) và máy trạm người dùng (UTC+7), nhóm đã thống nhất quy chuẩn lưu trữ toàn bộ thời gian trong CSDL ở chuẩn UTC và chỉ quy đổi sang giờ Việt Nam tại tầng hiển thị.
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Backlog Refinement (Làm mịn Backlog)}
+Được thực hiện định kỳ giữa chu kỳ Sprint nhằm phân rã các User Story phức tạp, làm rõ tiêu chí nghiệm thu và chuẩn bị sẵn sàng dữ liệu cho phiên Sprint Planning tiếp theo.
+
+\section{Cách nhóm tổ chức Sprint trên Jira}
+\label{sec:to-chuc-jira}
+
+Trong quá trình quản lý dự án, nhóm tổ chức cấu trúc công việc trên công cụ quản trị (Jira Software / GitHub Projects) theo mô hình phân cấp chuẩn mực:
+
+\begin{enumerate}
+    \item \textbf{Cấp độ Epic:} Đại diện cho các mảng chức năng lớn của hệ thống:
+    \begin{itemize}
+        \item \texttt{EPIC-01: Core Platform \& Identity} (Quản trị tài khoản, xác thực Cookie, phân quyền, kiểm toán).
+        \item \texttt{EPIC-02: Jobs \& Companies} (Quản lý tin tuyển dụng, danh mục IT, công ty bảo trợ, đa bộ lọc).
+        \item \texttt{EPIC-03: Candidate Profile \& Application} (Hồ sơ IT, upload CV an toàn, nộp đơn, rút đơn).
+        \item \texttt{EPIC-04: ATS Pipeline \& AI Evaluation} (Đánh giá AI Gemini, heuristic offline, quy trình 5 bước, phỏng vấn \texttt{.ics}).
+        \item \texttt{EPIC-05: System Hardening \& UAT} (Bảo vệ dữ liệu cá nhân, chống CSRF, chuẩn hóa UTC, đóng gói Docker).
+    \end{itemize}
+    \item \textbf{Cấp độ User Story:} Được định dạng theo chuẩn: \textit{"Là một [vai trò], tôi muốn [hành động] để [lợi ích]"}. Mỗi Story được gán mã định danh duy nhất (ví dụ: ATS-01, ATS-13, P1-3, UI-2), kèm theo tiêu chí nghiệm thu rõ ràng (Acceptance Criteria).
+    \item \textbf{Cấp độ Sub-task:} Phân rã kỹ thuật cho từng thành viên:
+    \begin{itemize}
+        \item \textit{Database/Backend:} Tạo entity, viết migration, cài đặt logic trong Service interface.
+        \item \textit{Frontend:} Xây dựng Razor component, tích hợp CSS native, gắn token Antiforgery.
+        \item \textit{Testing:} Viết bài kiểm thử đơn vị xUnit, kiểm tra độ phủ hồi quy.
+    \end{itemize}
+    \item \textbf{Quy trình luân chuyển trạng thái (Workflow):}
+    \begin{equation}
+    \text{To Do} \longrightarrow \text{In Progress} \longrightarrow \text{Code Review / PR} \longrightarrow \text{Testing / Verification} \longrightarrow \text{Done}
+    \end{equation}
+\end{enumerate}
+\textit{Lưu ý minh bạch dữ liệu:} Bảng tổng hợp chi tiết số điểm Story Point cụ thể từng User Story và biểu đồ Velocity chính thức được đối chiếu từ dữ liệu Jira Backlog và ghi nhận chi tiết tại Chương~\ref{chap:quan-ly-yeu-cau}.

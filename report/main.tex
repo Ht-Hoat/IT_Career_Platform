@@ -1,0 +1,229 @@
+\documentclass[12pt,a4paper,oneside]{report}
+
+% =====================================================================
+%  GÓI NGÔN NGỮ VÀ PHÔNG CHỮ TIẾNG VIỆT CHO XELATEX
+% =====================================================================
+\usepackage{amsmath,amssymb}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+
+\usepackage[top=25mm,bottom=25mm,left=30mm,right=20mm,headheight=15pt]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{indentfirst}
+\setlength{\parindent}{1.27cm}
+\setlength{\parskip}{6pt}
+
+% =====================================================================
+%  BẢNG BIỂU, HÌNH ẢNH VÀ ĐỒ HỌA
+% =====================================================================
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows,arrows.meta,shapes,shapes.geometric,positioning}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% =====================================================================
+%  TIÊU ĐỀ CHƯƠNG MỤC VÀ ĐẦU TRANG / CHÂN TRANG
+% =====================================================================
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\centering}
+  {\fontsize{14}{16}\selectfont CHƯƠNG \thechapter}
+  {0.5ex}
+  {\fontsize{16}{20}\selectfont\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+
+\titleformat{\section}
+  {\normalfont\bfseries\fontsize{13}{16}\selectfont}
+  {\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+
+\titleformat{\subsection}
+  {\normalfont\bfseries\itshape\fontsize{12}{15}\selectfont}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape IT Career Platform --- Quản lý Dự án Phần mềm}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\small\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% =====================================================================
+%  THƯ VIỆN THAM KHẢO VÀ LIÊN KẾT HYPERLINK
+% =====================================================================
+\usepackage[backend=biber,style=numeric-comp,sorting=none]{biblatex}
+\addbibresource{references.bib}
+
+\usepackage{caption}
+\captionsetup[table]{name=Bảng,labelfont=bf,labelsep=colon,skip=6pt}
+\captionsetup[figure]{name=Hình,labelfont=bf,labelsep=colon,skip=6pt}
+
+\usepackage[unicode,
+  colorlinks=true,
+  linkcolor=blue!80!black,
+  citecolor=green!60!black,
+  urlcolor=blue!80!black,
+  pdfauthor={Nhóm 9 - QLDA CNTT},
+  pdftitle={Báo cáo Quản lý Dự án: IT Career Platform}]{hyperref}
+
+% =====================================================================
+%  BẮT ĐẦU TÀI LIỆU
+% =====================================================================
+\begin{document}
+
+% ---------------------------------------------------------------------
+%  TRANG BÌA CHÍNH (TITLE PAGE)
+% ---------------------------------------------------------------------
+\begin{titlepage}
+\begin{center}
+    {\fontsize{13}{16}\selectfont \textbf{TRƯỜNG ĐẠI HỌC XÂY DỰNG HÀ NỘI}\par}
+    {\fontsize{13}{16}\selectfont \textbf{KHOA CÔNG NGHỆ THÔNG TIN}\par}
+    \vspace{1.5cm}
+    \vspace{1.5cm}
+    {\fontsize{18}{22}\selectfont \textbf{BÁO CÁO MÔN HỌC}\par}
+    {\fontsize{20}{26}\selectfont \textbf{QUẢN LÝ DỰ ÁN CÔNG NGHỆ THÔNG TIN}\par}
+    \vspace{1cm}
+    \rule{\textwidth}{1.5pt}\par
+    \vspace{0.5cm}
+    {\fontsize{16}{22}\selectfont \textbf{ĐỀ TÀI:}\par}
+    \vspace{0.3cm}
+    {\fontsize{18}{24}\selectfont \textbf{IT CAREER PLATFORM}\par}
+    {\fontsize{15}{20}\selectfont \textbf{HỆ THỐNG NỀN TẢNG NGHỀ NGHIỆP IT TÍCH HỢP ATS VÀ AI}\par}
+    \vspace{0.5cm}
+    \rule{\textwidth}{1.5pt}\par
+    \vspace{2cm}
+
+    \begin{tabularx}{\textwidth}{p{4.5cm} X}
+        \textbf{Giảng viên hướng dẫn:} & \textbf{[CẦN BỔ SUNG TÊN GIẢNG VIÊN]} \\
+        \addlinespace
+        \textbf{Lớp sinh viên:} & 68CS2 \\
+        \addlinespace
+        \textbf{Nhóm thực hiện:} & \textbf{Nhóm 9} \\
+        \addlinespace
+        \textbf{Thành viên nhóm:} & 1. Hà Thúc Hoạt (Product Owner / Lead Dev) \\
+                                  & 2. Nguyễn Viết Hùng (Core Backend Developer) \\
+                                  & 3. Võ Nguyên Anh Kiệt (Frontend \& QA Developer) \\
+                                  & 4. \textbf{[CHƯA XÁC ĐỊNH - CẦN BỔ SUNG TÊN]} \\
+                                  & 5. \textbf{[CHƯA XÁC ĐỊNH - CẦN BỔ SUNG TÊN]} \\
+        \addlinespace
+        \textbf{Repository Git:} & \url{https://github.com/Ht-Hoat/IT_Career_Platform} \\
+        \textbf{Nhánh phân tích:} & \texttt{dev-kiet} \\
+    \end{tabularx}
+
+    \vfill
+    {\fontsize{12}{15}\selectfont \textbf{HÀ NỘI, THÁNG 09 NĂM 2026}\par}
+\end{center}
+\end{titlepage}
+
+% ---------------------------------------------------------------------
+%  LỜI CAM ĐOAN & LỜI CẢM ƠN
+% ---------------------------------------------------------------------
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\chapter*{LỜI CAM ĐOAN VỀ DỮ LIỆU THỰC TẾ}
+\addcontentsline{toc}{chapter}{LỜI CAM ĐOAN VỀ DỮ LIỆU THỰC TẾ}
+
+Nhóm phát triển xin cam đoan toàn bộ các số liệu, mã nguồn, kiến trúc hệ thống, ca kiểm thử và bằng chứng thực thi trong bản báo cáo này được trích xuất hoàn toàn trung thực từ mã nguồn thực tế của dự án \textbf{IT Career Platform} trên nhánh \texttt{dev-kiet} thuộc kho lưu trữ:
+\begin{center}
+\url{https://github.com/Ht-Hoat/IT_Career_Platform}
+\end{center}
+
+Nhóm quán triệt sâu sắc nguyên tắc đạo đức học thuật và quy tắc chống bịa đặt dữ liệu:
+\begin{enumerate}
+    \item Toàn bộ 415 bài kiểm thử tự động, kết quả phân loại MoSCoW, mô hình máy trạng thái và cơ chế chuyển mạch Heuristic Offline được đối chiếu trực tiếp từ mã nguồn C\# (.NET 10) và tệp báo cáo kỹ thuật trong repository.
+    \item Các dữ liệu chưa tìm thấy tệp minh chứng trực tiếp trong Git (như danh tính cụ thể của 2 thành viên còn lại, danh sách thô 68 User Story từ Jira) đều được ghi chú minh bạch bằng nhãn \textbf{[CHƯA CÓ DỮ LIỆU XÁC MINH - CẦN BỔ SUNG]} và được hệ thống hóa trong tài liệu \texttt{MISSING\_DATA.md}.
+    \item Mọi nhận định đánh giá đều được phân định rõ ràng giữa ba cấp độ: \textbf{Dữ liệu thực tế khách quan}, \textbf{Phân tích của nhóm phát triển}, và \textbf{Lý thuyết quản trị kỹ nghệ phần mềm}.
+\end{enumerate}
+
+\begin{flushright}
+\textit{Hà Nội, ngày 30 tháng 09 năm 2026}\par
+\textbf{Đại diện Nhóm thực hiện}\par
+\vspace{1.5cm}
+\textbf{Nhóm 9 --- Quản lý Dự án CNTT}
+\end{flushright}
+
+\clearpage
+
+% ---------------------------------------------------------------------
+%  DANH MỤC TỪ VIẾT TẮT
+% ---------------------------------------------------------------------
+\chapter*{DANH MỤC THUẬT NGỮ VÀ TỪ VIẾT TẮT}
+\addcontentsline{toc}{chapter}{DANH MỤC THUẬT NGỮ VÀ TỪ VIẾT TẮT}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{l p{5cm} X}
+\toprule
+\textbf{Ký hiệu} & \textbf{Thuật ngữ tiếng Anh} & \textbf{Giải thích nghĩa tiếng Việt} \\
+\midrule
+\textbf{AI} & Artificial Intelligence & Trí tuệ nhân tạo \\
+\textbf{ATS} & Applicant Tracking System & Hệ thống theo dõi và quản lý hồ sơ ứng viên \\
+\textbf{CI/CD} & Continuous Integration / Continuous Deployment & Tích hợp và Triển khai liên tục \\
+\textbf{CSRF} & Cross-Site Request Forgery & Tấn công giả mạo yêu cầu qua trình duyệt \\
+\textbf{CV} & Curriculum Vitae & Sơ yếu lý lịch / Hồ sơ năng lực cá nhân \\
+\textbf{DI} & Dependency Injection & Tiêm phụ thuộc (mô hình kiến trúc phần mềm) \\
+\textbf{DoD} & Definition of Done & Định nghĩa hoàn thành trong Scrum \\
+\textbf{DTO} & Data Transfer Object & Đối tượng truyền tải dữ liệu \\
+\textbf{EICAR} & European Institute for Computer Antivirus Research & Tiêu chuẩn chuỗi kiểm thử an ninh phần mềm \\
+\textbf{EF Core} & Entity Framework Core & Khung ánh xạ đối tượng - quan hệ của .NET \\
+\textbf{JD} & Job Description & Bản mô tả công việc và yêu cầu tuyển dụng \\
+\textbf{MoSCoW} & Must, Should, Could, Won't & Kỹ thuật phân loại và ưu tiên yêu cầu \\
+\textbf{ORM} & Object-Relational Mapping & Ánh xạ đối tượng - quan hệ CSDL \\
+\textbf{RMMM} & Risk Mitigation, Monitoring, Management & Kế hoạch giảm nhẹ, giám sát và quản lý rủi ro \\
+\textbf{SSR} & Server-Side Rendering & Render giao diện tại máy chủ \\
+\textbf{UAT} & User Acceptance Testing & Kiểm thử chấp nhận người dùng \\
+\textbf{UTC} & Coordinated Universal Time & Giờ phối hợp quốc tế \\
+\textbf{W5HH} & Why, What, When, Who, Where, How, How much & Nguyên tắc quản trị dự án của Barry Boehm \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\clearpage
+
+% ---------------------------------------------------------------------
+%  MỤC LỤC, DANH MỤC BẢNG, DANH MỤC HÌNH
+% ---------------------------------------------------------------------
+\tableofcontents
+\clearpage
+
+\listoftables
+\clearpage
+
+\listoffigures
+\clearpage
+
+% ---------------------------------------------------------------------
+%  NỘI DUNG CHÍNH (MAIN BODY)
+% ---------------------------------------------------------------------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\input{chapters/chapter1.tex}
+\input{chapters/chapter2.tex}
+\input{chapters/chapter3.tex}
+\input{chapters/chapter4.tex}
+\input{chapters/chapter5.tex}
+\input{chapters/chapter6.tex}
+
+% ---------------------------------------------------------------------
+%  TÀI LIỆU THAM KHẢO
+% ---------------------------------------------------------------------
+\clearpage
+\printbibliography[heading=bibintoc,title={TÀI LIỆU THAM KHẢO}]
+
+\end{document}
