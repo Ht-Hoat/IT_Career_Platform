@@ -194,6 +194,34 @@ public class InterviewQuestionTests
         Assert.Null(NewSvc(t).GetAiQuestions(appId));
     }
 
+    /// <summary>
+    /// Bộ rỗng, và bộ MỘT câu mà vẫn dài quá cột, đều không ghi — và hàm phải NÓI ra điều đó.
+    /// Người gọi đọc lại bộ câu hỏi để đoán sẽ thấy bộ CŨ còn nguyên và báo "đã tạo xong"
+    /// cho một lần tạo chẳng lưu được gì.
+    /// </summary>
+    [Fact]
+    public void SaveAiQuestions_ReportsFalse_WhenNothingWasWritten()
+    {
+        using var t = new TestDb();
+        var (appId, _) = Seed(t);
+        var svc = NewSvc(t);
+
+        Assert.True(svc.SaveAiQuestions(appId, new InterviewQuestionSet(
+            new List<InterviewQuestion> { new("Câu hỏi cũ?", QuestionCategory.Technical, "Gợi ý") },
+            EvaluationSource.Gemini)));
+
+        Assert.False(svc.SaveAiQuestions(appId, new InterviewQuestionSet(
+            new List<InterviewQuestion>(), EvaluationSource.Gemini)));
+
+        Assert.False(svc.SaveAiQuestions(appId, new InterviewQuestionSet(
+            new List<InterviewQuestion> { new(new string('x', 6000), QuestionCategory.Technical, "Gợi ý") },
+            EvaluationSource.Gemini)));
+
+        // Bộ cũ còn nguyên — đó chính là lý do không được dùng nó để kết luận.
+        Assert.Equal("Câu hỏi cũ?", Assert.Single(svc.GetAiQuestions(appId)!.Items).Question);
+        Assert.Single(svc.GetAiQuestionHistory(appId));
+    }
+
     /// <summary>Bộ quá dài bị bỏ bớt câu cuối, chứ không ghi một chuỗi JSON bị cắt ngang.</summary>
     [Fact]
     public void SaveAiQuestions_OverlongSet_DropsTrailingQuestions_ButStaysReadable()

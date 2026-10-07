@@ -42,6 +42,9 @@
                 <td>
                     <div class="row-actions">
                         <a class="btn-sm" href="@($"/my-applications/{a.Id}")">Chi tiết</a>
+                        @* "Đã chốt" hỏi qua ApplicationStatusFlow, không liệt kê lại ba trạng thái tại
+                           chỗ: bảng Next là nơi duy nhất định nghĩa điều đó, và endpoint rút đơn cũng
+                           dựa vào nó. Một bản chép tay ở đây sẽ mời người dùng bấm một nút bị từ chối. *@
                         @if (!ApplicationStatusFlow.IsTerminal(a.Status))
                         {
                             <form method="post" action="@($"/applications/{a.Id}/withdraw")" onsubmit="return confirm('Bạn chắc chắn muốn rút đơn ứng tuyển này? Hành động này không thể hoàn tác.');">

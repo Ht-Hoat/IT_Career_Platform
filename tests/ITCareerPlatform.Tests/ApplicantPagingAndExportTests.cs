@@ -21,14 +21,15 @@ public class ApplicantPagingAndExportTests
     /// nộp một lần vào một tin, nên mỗi đơn cần một hồ sơ riêng.
     /// </summary>
     private static (Job Job, User Mentor) SeedApplicants(
-        TestDb t, int n, string status = ApplicationStatus.Submitted)
+        TestDb t, int n, string status = ApplicationStatus.Submitted,
+        DateTime? appliedAt = null, int? aiScore = null)
     {
         var m = t.AddMentor();
         var job = t.AddJob(m.Id);
         for (var i = 0; i < n; i++)
         {
             var p = t.AddStudentWithProfile($"p{i}");
-            t.AddApplication(job.Id, p.Id, status);
+            t.AddApplication(job.Id, p.Id, status, aiScore: aiScore, appliedAt: appliedAt);
         }
         return (job, m);
     }
@@ -65,6 +66,34 @@ public class ApplicantPagingAndExportTests
 
         Assert.Equal(25, ids.Count);
         Assert.Equal(25, ids.Distinct().Count());
+    }
+
+    /// <summary>
+    /// Nhập hàng loạt, hoặc hai lần nộp trong cùng một tick, cho ra nhiều đơn TRÙNG AppliedAt.
+    /// Thiếu khóa phụ ổn định thì thứ tự do SQL tự quyết và đổi giữa hai request, nên chuyển
+    /// trang sẽ thấy trùng một người hoặc mất hẳn một người.
+    /// </summary>
+    [Fact]
+    public void Paging_WithIdenticalAppliedAt_NeverRepeatsOrDropsARow()
+    {
+        using var t = new TestDb();
+        const int Total = 12, Size = 5;   // Size phải >= 5: GetByJobPaged kẹp sàn ở đó.
+        var (job, _) = SeedApplicants(t, Total, appliedAt: DateTime.UtcNow.AddDays(-1), aiScore: 70);
+        var svc = NewSvc(t);
+
+        foreach (var sort in new[] { "date", "score" })
+        {
+            var seen = new List<int>();
+            for (var p = 1; p <= 3; p++)
+                seen.AddRange(svc.GetByJobPaged(job.Id, sort, null, p, Size).Items.Select(x => x.Id));
+
+            Assert.Equal(Total, seen.Count);
+            Assert.Equal(Total, seen.Distinct().Count());
+        }
+
+        // Và cùng một câu hỏi, hỏi hai lần, phải ra cùng một thứ tự.
+        Assert.Equal(svc.GetByJob(job.Id, "score").Select(x => x.Id),
+                     svc.GetByJob(job.Id, "score").Select(x => x.Id));
     }
 
     /// <summary>

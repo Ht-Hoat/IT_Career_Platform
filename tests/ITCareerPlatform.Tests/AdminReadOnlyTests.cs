@@ -68,7 +68,7 @@ public class AdminReadOnlyTests
         var svc = new JobService(t.Db);
 
         Assert.False(svc.CanModify(legacy.Id, admin.Id));
-        Assert.True(svc.CanView(legacy.Id, admin.Id));
+        Assert.True(svc.GetRights(legacy.Id, admin.Id).CanView);
     }
 
     [Fact]
@@ -80,17 +80,21 @@ public class AdminReadOnlyTests
         var student = t.AddUser("SV", "sv-x@itcp.vn", Roles.StudentId);
         var svc = new JobService(t.Db);
 
-        Assert.True(svc.CanView(job.Id, m.Id));
+        // Bảng quyền đầy đủ, đọc qua CHÍNH entry point mà các trang dùng. CanModify giữ lại
+        // vì các endpoint chỉ cần một bit; CanView thì không còn — hỏi cả hai luôn rẻ hơn.
+        Assert.Equal((true, true), Pair(svc.GetRights(job.Id, m.Id)));          // chủ tin
+        Assert.Equal((true, false), Pair(svc.GetRights(job.Id, admin.Id)));     // Admin: xem, không thao tác
+        Assert.Equal((false, false), Pair(svc.GetRights(job.Id, other.Id)));    // Mentor khác
+        Assert.Equal((false, false), Pair(svc.GetRights(job.Id, student.Id)));  // Sinh viên
+        Assert.Equal((false, false), Pair(svc.GetRights(9999, admin.Id)));      // tin không tồn tại
+
+        // Và CanModify nói cùng một điều với bit thứ hai ở trên.
         Assert.True(svc.CanModify(job.Id, m.Id));
-
-        Assert.True(svc.CanView(job.Id, admin.Id));      // Admin: xem được
-        Assert.False(svc.CanModify(job.Id, admin.Id));   //        nhưng không thao tác
-
-        Assert.False(svc.CanView(job.Id, other.Id));
+        Assert.False(svc.CanModify(job.Id, admin.Id));
         Assert.False(svc.CanModify(job.Id, other.Id));
-        Assert.False(svc.CanView(job.Id, student.Id));
-        Assert.False(svc.CanView(9999, admin.Id));
     }
+
+    private static (bool CanView, bool CanModify) Pair(AccessRights r) => (r.CanView, r.CanModify);
 
     // ===== Ứng viên =====
 

@@ -9,6 +9,11 @@ namespace ITCareerPlatform.Services;
 ///
 /// Tách khỏi request vì SMTP chậm và hay lỗi: gửi đồng bộ trong lần đổi trạng thái thì một
 /// lần timeout làm nhà tuyển dụng thấy "đổi trạng thái thất bại" dù trạng thái đã đổi.
+///
+/// GIẢ ĐỊNH: ứng dụng chạy MỘT instance. Không có bước giành hàng (không SELECT ... WITH
+/// UPDLOCK, không cột "đang xử lý"), nên hai instance cùng quét sẽ lấy đúng cùng một lô và
+/// gửi email TRÙNG cho ứng viên. Nếu về sau chạy nhiều instance hoặc scale-out, phải thêm
+/// bước giành hàng TRƯỚC khi gửi — chứ không phải sau.
 /// </summary>
 public class OutboxSender(IServiceScopeFactory scopeFactory, ILogger<OutboxSender> logger) : BackgroundService
 {
@@ -92,7 +97,7 @@ public class OutboxSender(IServiceScopeFactory scopeFactory, ILogger<OutboxSende
             }
             catch (Exception ex)
             {
-                row.LastError = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
+                row.LastError = TextLimits.Cut(ex.Message, EmailOutbox.LastErrorLimit);
                 logger.LogWarning(ex,
                     "Gửi email #{Id} tới {To} thất bại (lần {Attempt}/{Max}).",
                     row.Id, row.ToEmail, row.Attempts, EmailOutbox.MaxAttempts);

@@ -15,19 +15,25 @@
 {
     @* N2.G — Student Dashboard *@
     <div class="cards">
-        <div class="card"><div class="num">@openJobCount</div><div class="lbl">Việc làm IT đang tuyển</div></div>
-        <div class="card"><div class="num">@myApps</div><div class="lbl">Đơn đã nộp</div></div>
-        <div class="card">
-            @if (avgAiScore.HasValue)
-            {
-                <div class="num @Ui.ScoreClass(avgAiScore)">@avgAiScore%</div>
-            }
-            else
-            {
-                <div class="num sub" style="font-size:1.1rem">Chưa có dữ liệu</div>
-            }
-            <div class="lbl">Độ phù hợp AI (trung bình)</div>
-        </div>
+        <a class="card-link" href="/positions">
+            <div class="card"><div class="num">@openJobCount</div><div class="lbl">Việc làm IT đang tuyển</div></div>
+        </a>
+        <a class="card-link" href="/my-applications">
+            <div class="card"><div class="num">@myApps</div><div class="lbl">Đơn đã nộp</div></div>
+        </a>
+        <a class="card-link" href="/my-applications">
+            <div class="card">
+                @if (avgAiScore.HasValue)
+                {
+                    <div class="num @Ui.ScoreClass(avgAiScore)">@avgAiScore%</div>
+                }
+                else
+                {
+                    <div class="num sub" style="font-size:1.1rem">Chưa có dữ liệu</div>
+                }
+                <div class="lbl">Độ phù hợp AI (trung bình)</div>
+            </div>
+        </a>
     </div>
 
     <div class="panel" style="margin-top:16px">
@@ -61,35 +67,104 @@
 
     <div class="panel" style="margin-top:16px">
         <h2>Bắt đầu tìm việc IT</h2>
-        <ul class="feat">
-            <li><a href="/profile">Hoàn thiện hồ sơ IT & tải CV</a> — GitHub, LinkedIn, Portfolio, Tech Skills</li>
-            <li><a href="/positions">Xem & lọc việc làm IT theo Category / Tech Stack / Level</a> rồi ứng tuyển</li>
-            <li><a href="/my-applications">Theo dõi trạng thái đơn ứng tuyển</a></li>
-        </ul>
+        <div class="action-grid">
+            <a class="action-card" href="/profile">
+                <div class="action-card-icon">📄</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Hoàn thiện hồ sơ & CV</div>
+                    <div class="action-card-desc">GitHub, LinkedIn, Portfolio, Tech Skills</div>
+                </div>
+            </a>
+            <a class="action-card" href="/positions">
+                <div class="action-card-icon">🔍</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Xem & Lọc việc làm IT</div>
+                    <div class="action-card-desc">Theo Category, Tech Stack, Level</div>
+                </div>
+            </a>
+            <a class="action-card" href="/my-applications">
+                <div class="action-card-icon">📬</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Theo dõi trạng thái đơn</div>
+                    <div class="action-card-desc">Kiểm tra tiến độ ứng tuyển & kết quả</div>
+                </div>
+            </a>
+            <a class="action-card" href="/toolkit">
+                <div class="action-card-icon">🎯</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Checklist & Lộ trình kỹ năng</div>
+                    <div class="action-card-desc">Chuẩn bị kiến thức phỏng vấn & lộ trình</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    @* Việc làm IT trên các nền tảng khác (VN + Quốc tế) — khôi phục nội dung từ bản integration-n1-n2,
+       thêm vào cuối trang chủ của Sinh viên. Mở ở tab mới, không thay đổi luồng nào khác của trang. *@
+    <div class="panel" style="margin-top:16px">
+        <h2>🔗 Việc làm IT trên các trang khác</h2>
+        <p class="sub">Tham khảo thêm cơ hội việc làm IT tại các nền tảng tuyển dụng uy tín trong nước.</p>
+        <div class="action-grid">
+            @foreach (var l in VnJobSites)
+            {
+                <a class="action-card" href="@l.Url" target="_blank" rel="noopener">
+                    <div class="action-card-icon">🔗</div>
+                    <div class="action-card-content">
+                        <div class="action-card-title">@l.Name</div>
+                        <div class="action-card-desc">@l.Desc</div>
+                    </div>
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+        <h2>🌏 Việc làm IT Quốc tế & Remote</h2>
+        <p class="sub">Cơ hội việc làm IT toàn cầu và làm việc từ xa.</p>
+        <div class="action-grid">
+            @foreach (var l in IntlJobSites)
+            {
+                <a class="action-card" href="@l.Url" target="_blank" rel="noopener">
+                    <div class="action-card-icon">🌐</div>
+                    <div class="action-card-content">
+                        <div class="action-card-title">@l.Name</div>
+                        <div class="action-card-desc">@l.Desc</div>
+                    </div>
+                </a>
+            }
+        </div>
     </div>
 }
 else if (role == Roles.Mentor)
 {
     @* N2.I — Mentor Command Center *@
     <div class="cards">
-        <div class="card"><div class="num">@totalMentorApps</div><div class="lbl">Tổng đơn ứng tuyển</div></div>
-        <div class="card" style="border-color:#2563eb"><div class="num" style="color:#2563eb">@recentApps</div><div class="lbl">Hồ sơ mới trong 24h</div></div>
-        <div class="card" style="border-color:#ea580c"><div class="num" style="color:#ea580c">@unreviewedApps</div><div class="lbl">Hồ sơ chưa xem xét</div></div>
-        <div class="card">
-            @if (totalMentorApps > 0)
-            {
-                <div class="num">@conversionRate%</div>
-            }
-            else
-            {
-                <div class="num sub" style="font-size:1.1rem">Chưa có dữ liệu</div>
-            }
-            <div class="lbl">Tỷ lệ tuyển dụng</div>
-        </div>
+        <a class="card-link" href="/jobs">
+            <div class="card"><div class="num">@totalMentorApps</div><div class="lbl">Tổng đơn ứng tuyển</div></div>
+        </a>
+        <a class="card-link" href="#top-unreviewed">
+            <div class="card" style="border-color:#2563eb"><div class="num" style="color:#2563eb">@recentApps</div><div class="lbl">Hồ sơ mới trong 24h</div></div>
+        </a>
+        <a class="card-link" href="#top-unreviewed">
+            <div class="card" style="border-color:#ea580c"><div class="num" style="color:#ea580c">@unreviewedApps</div><div class="lbl">Hồ sơ chưa xem xét</div></div>
+        </a>
+        <a class="card-link" href="/dashboard">
+            <div class="card">
+                @if (totalMentorApps > 0)
+                {
+                    <div class="num">@conversionRate%</div>
+                }
+                else
+                {
+                    <div class="num sub" style="font-size:1.1rem">Chưa có dữ liệu</div>
+                }
+                <div class="lbl">Tỷ lệ tuyển dụng</div>
+            </div>
+        </a>
     </div>
 
     <!-- Top 5 ứng viên chưa xem xét -->
-    <div class="panel" style="margin-top:16px">
+    <div class="panel" id="top-unreviewed" style="margin-top:16px">
         <div class="page-head" style="margin-bottom:12px">
             <h2>Top hồ sơ chưa xem xét</h2>
             <span class="sub">Tối đa 5 hồ sơ mới nộp vào tin tuyển dụng của bạn</span>
@@ -170,27 +245,52 @@ else if (role == Roles.Mentor)
 
     <div class="panel" style="margin-top:16px">
         <h2>Công cụ cho Mentor / HR IT</h2>
-        <ul class="feat">
-            <li><a href="/jobs">Quản lý tin tuyển dụng IT</a> — tạo/sửa chuyên ngành, Tech Stack, Level</li>
-            <li>Xem danh sách ứng viên, AI đánh giá độ phù hợp & gợi ý lộ trình và xếp hạng</li>
-            <li>Điều chỉnh điểm (Human-in-the-loop), đổi trạng thái 5 bước</li>
-            <li><a href="/dashboard">Xem Dashboard thống kê & biểu đồ</a></li>
-        </ul>
+        <div class="action-grid">
+            <a class="action-card" href="/jobs">
+                <div class="action-card-icon">💼</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Quản lý tin tuyển dụng</div>
+                    <div class="action-card-desc">Tạo, sửa, đóng/mở tin và xem danh sách ứng viên</div>
+                </div>
+            </a>
+            <a class="action-card" href="/jobs/new">
+                <div class="action-card-icon">➕</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Đăng tin tuyển dụng mới</div>
+                    <div class="action-card-desc">Thiết lập Tech Stack, chuyên ngành & cấp bậc IT</div>
+                </div>
+            </a>
+            <a class="action-card" href="/dashboard">
+                <div class="action-card-icon">📊</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Thống kê & Báo cáo</div>
+                    <div class="action-card-desc">Phễu tuyển dụng, phân bố điểm AI và tỷ lệ chuyển đổi</div>
+                </div>
+            </a>
+        </div>
     </div>
 }
 else
 {
     @* N2.J — Admin Overview *@
     <div class="cards">
-        <div class="card"><div class="num">@totalUsers</div><div class="lbl">Tài khoản</div></div>
-        <div class="card"><div class="num">@openJobCount</div><div class="lbl">Tin đang mở (@totalJobCount tổng)</div></div>
-        <div class="card" style="border-color:#ea580c"><div class="num" style="color:#ea580c">@totalApps</div><div class="lbl">Tổng đơn ứng tuyển</div></div>
-        <div class="card" style="border-color:#7c3aed">
-            <div class="num" style="color:#7c3aed;font-size:1.1rem">
-                Admin: @usersByRole.GetValueOrDefault(Roles.AdminId, 0) · Mentor: @usersByRole.GetValueOrDefault(Roles.MentorId, 0) · SV: @usersByRole.GetValueOrDefault(Roles.StudentId, 0)
+        <a class="card-link" href="/users">
+            <div class="card"><div class="num">@totalUsers</div><div class="lbl">Tài khoản</div></div>
+        </a>
+        <a class="card-link" href="/jobs">
+            <div class="card"><div class="num">@openJobCount</div><div class="lbl">Tin đang mở (@totalJobCount tổng)</div></div>
+        </a>
+        <a class="card-link" href="/dashboard">
+            <div class="card" style="border-color:#ea580c"><div class="num" style="color:#ea580c">@totalApps</div><div class="lbl">Tổng đơn ứng tuyển</div></div>
+        </a>
+        <a class="card-link" href="/users">
+            <div class="card" style="border-color:#7c3aed">
+                <div class="num" style="color:#7c3aed;font-size:1.1rem">
+                    Admin: @usersByRole.GetValueOrDefault(Roles.AdminId, 0) · Mentor: @usersByRole.GetValueOrDefault(Roles.MentorId, 0) · SV: @usersByRole.GetValueOrDefault(Roles.StudentId, 0)
+                </div>
+                <div class="lbl">Cơ cấu người dùng</div>
             </div>
-            <div class="lbl">Cơ cấu người dùng</div>
-        </div>
+        </a>
     </div>
 
     <div class="panel" style="margin-top:16px">
@@ -226,16 +326,75 @@ else
 
     <div class="panel" style="margin-top:16px">
         <h2>Công cụ quản trị hệ thống</h2>
-        <ul class="feat">
-            <li><a href="/users">Quản lý người dùng</a> — phân quyền, khóa/mở khóa tài khoản</li>
-            <li><a href="/jobs">Quản lý toàn bộ tin tuyển dụng</a></li>
-            <li><a href="/dashboard">Xem Dashboard thống kê & biểu đồ</a></li>
-            <li><a href="/audit">Xem chi tiết nhật ký kiểm toán hệ thống</a></li>
-        </ul>
+        <div class="action-grid">
+            <a class="action-card" href="/users">
+                <div class="action-card-icon">👥</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Quản lý người dùng</div>
+                    <div class="action-card-desc">Phân quyền, khóa/mở tài khoản, duyệt HR</div>
+                </div>
+            </a>
+            <a class="action-card" href="/jobs">
+                <div class="action-card-icon">💼</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Quản lý tin tuyển dụng</div>
+                    <div class="action-card-desc">Giám sát & quản lý toàn bộ tin IT</div>
+                </div>
+            </a>
+            <a class="action-card" href="/dashboard">
+                <div class="action-card-icon">📊</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Báo cáo & Thống kê</div>
+                    <div class="action-card-desc">Biểu đồ phân tích & số liệu hệ thống</div>
+                </div>
+            </a>
+            <a class="action-card" href="/audit">
+                <div class="action-card-icon">🛡️</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Nhật ký kiểm toán</div>
+                    <div class="action-card-desc">Audit Log truy vết thao tác bảo mật</div>
+                </div>
+            </a>
+            <a class="action-card" href="/companies">
+                <div class="action-card-icon">🏢</div>
+                <div class="action-card-content">
+                    <div class="action-card-title">Quản lý công ty</div>
+                    <div class="action-card-desc">Danh sách doanh nghiệp & đối tác IT</div>
+                </div>
+            </a>
+        </div>
     </div>
 }
 
 @code {
+
+    // Danh sách trang tuyển dụng IT bên ngoài (VN + Quốc tế) hiển thị ở cuối trang chủ Sinh viên.
+    // Nội dung lấy lại từ trang Cổng tuyển dụng (Resources) của bản integration-n1-n2.
+    private record JobSite(string Name, string Url, string Desc);
+
+    private static readonly JobSite[] VnJobSites =
+    {
+        new("TopDev", "https://topdev.vn", "Việc làm IT hàng đầu Việt Nam"),
+        new("ITviec", "https://itviec.com", "Việc làm IT chất lượng cao"),
+        new("TopCV", "https://www.topcv.vn", "Tạo CV + tìm việc đa ngành"),
+        new("VietnamWorks", "https://www.vietnamworks.com", "Việc làm chuyên nghiệp"),
+        new("CareerViet", "https://careerviet.vn", "Cổng tuyển dụng lớn"),
+        new("JobsGO", "https://jobsgo.vn", "Tìm việc nhanh"),
+        new("CareerBuilder VN", "https://careerbuilder.vn", "Việc làm & tư vấn nghề"),
+        new("123job", "https://123job.vn", "Việc làm IT & thực tập"),
+    };
+
+    private static readonly JobSite[] IntlJobSites =
+    {
+        new("LinkedIn Jobs", "https://www.linkedin.com/jobs", "Mạng nghề nghiệp lớn nhất"),
+        new("Indeed", "https://www.indeed.com", "Công cụ tìm việc toàn cầu"),
+        new("Glassdoor", "https://www.glassdoor.com", "Việc làm + review công ty"),
+        new("Wellfound (AngelList)", "https://wellfound.com", "Việc làm startup"),
+        new("We Work Remotely", "https://weworkremotely.com", "Việc remote"),
+        new("Remote.co", "https://remote.co", "Cộng đồng làm việc từ xa"),
+        new("Stack Overflow Jobs", "https://stackoverflow.com/jobs", "Việc cho developer"),
+        new("RemoteOK", "https://remoteok.com", "Việc remote toàn cầu"),
+    };
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
     private string name = "", role = "";
     private int uid = 0;

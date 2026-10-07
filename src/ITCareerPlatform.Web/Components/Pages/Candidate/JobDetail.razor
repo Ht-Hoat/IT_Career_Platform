@@ -35,8 +35,6 @@ else if (status == ViewStatus.ClosedOrExpired)
 }
 else if (job != null)
 {
-    var daysLeft = (job.Deadline.Date - VietnamDateHelper.Today()).Days;
-
     <div class="panel" style="margin-bottom: 20px;">
         <div class="job-card-head" style="margin-bottom: 12px;">
             <span class="@Ui.CategoryClass(job.Category)">@job.Category</span>
@@ -47,8 +45,8 @@ else if (job != null)
         <div class="job-meta" style="margin: 16px 0; font-size: 15px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px 24px;">
             <span>📍 <b>Địa điểm:</b> @job.Location</span>
             <span>💰 <b>Mức lương:</b> @Ui.SalaryText(job.SalaryMin, job.SalaryMax)</span>
-            <span class="@(daysLeft <= 7 ? "deadline-hot" : "")">
-                ⏰ <b>Hạn nộp:</b> @Ui.DateText(job.Deadline)@(daysLeft <= 7 ? $" (còn {daysLeft} ngày)" : "")
+            <span class="@(Ui.DeadlineIsHot(job.Deadline) ? "deadline-hot" : "")">
+                ⏰ <b>Hạn nộp:</b> @Ui.DateText(job.Deadline)@Ui.DeadlineNote(job.Deadline)
             </span>
             <span>👥 <b>Ứng viên:</b> @applicantCount đã nộp</span>
             <span>📅 <b>Ngày đăng:</b> @Ui.DateText(job.CreatedAt)</span>

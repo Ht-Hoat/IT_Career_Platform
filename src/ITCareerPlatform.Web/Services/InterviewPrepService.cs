@@ -4,8 +4,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ITCareerPlatform.Services;
 
-/// <summary>Bộ câu hỏi đã tạo (nếu có) và lý do chưa tạo được lúc này (null nếu tạo được).</summary>
-public record InterviewPrepState(InterviewQuestionSet? Questions, string? BlockedReason);
+/// <summary>
+/// Mọi thứ trang đơn của sinh viên cần về phần luyện phỏng vấn.
+/// <para><see cref="Questions"/> là bộ MỚI NHẤT, đang hiển thị đầy đủ ở đầu mục.</para>
+/// <para><see cref="Previous"/> là những bộ TRƯỚC ĐÓ — đã bỏ bộ mới nhất ra, vì nó nằm ngay
+/// bên trên: để nguyên cả danh sách thì bộ vừa tạo hiện hai lần trên cùng một trang.</para>
+/// </summary>
+public record InterviewPrepState(
+    InterviewQuestionSet? Questions,
+    IReadOnlyList<InterviewQuestionSet> Previous,
+    string? BlockedReason);
 
 /// <summary>
 /// Bộ câu hỏi LUYỆN PHỎNG VẤN cho sinh viên: khi được mời phỏng vấn, sinh viên tạo một bộ câu
@@ -17,13 +25,11 @@ public record InterviewPrepState(InterviewQuestionSet? Questions, string? Blocke
 public interface IInterviewPrepService
 {
     /// <summary>
-    /// Mọi thứ trang đơn của sinh viên cần, trong MỘT truy vấn. Null nếu đơn không tồn tại hoặc
-    /// không thuộc sinh viên này.
+    /// Trạng thái đầy đủ cho trang đơn, trong HAI truy vấn (đơn + lịch sử). Null nếu đơn không
+    /// tồn tại hoặc không thuộc sinh viên này — hỏi từng mảnh sẽ thành 5 lượt đi CSDL vì mỗi
+    /// hàm phải tự kiểm lại quyền sở hữu.
     /// </summary>
     InterviewPrepState? GetState(int appId, int candidateUserId);
-
-    /// <summary>Bộ câu hỏi đã tạo cho đơn của CHÍNH sinh viên này; null nếu chưa có hoặc không phải chủ đơn.</summary>
-    InterviewQuestionSet? Get(int appId, int candidateUserId);
 
     /// <summary>Lý do chưa tạo được lúc này (để giao diện giải thích thay vì hiện nút), hoặc null nếu tạo được.</summary>
     string? WhyNot(int appId, int candidateUserId);
@@ -49,34 +55,45 @@ public class InterviewPrepService(
 
     public InterviewPrepState? GetState(int appId, int candidateUserId)
     {
-        var a = db.Applications.AsNoTracking()
-            .Where(x => x.Id == appId && x.CandidateProfile!.UserId == candidateUserId)
-            .Select(x => new
-            {
-                x.Status, Consented = x.CandidateProfile!.AiConsentAt != null,
-                x.AiQuestionsAt, x.AiQuestions, x.AiQuestionsSource
-            })
-            .FirstOrDefault();
-        if (a is null) return null;
+        var row = ReadRow(appId, candidateUserId);
+        if (row is null) return null;
 
-        return new InterviewPrepState(
-            ApplicationService.ParseQuestions(a.AiQuestions, a.AiQuestionsSource),
-            BlockedReason(a.Status, a.Consented, a.AiQuestionsAt));
+        var current = ApplicationService.ParseQuestions(row.Questions, row.Source);
+
+        // Bỏ bản chụp mới nhất NGAY TRONG SQL khi nó chính là bộ đang hiện ở trên: kéo nó về
+        // rồi Skip(1) ở C# nghĩa là mỗi lần mở trang truyền thừa cả một bộ câu hỏi qua dây
+        // và parse JSON của nó hai lần. Đơn tạo trước khi có bảng bản chụp không có dòng nào
+        // để bỏ, nên chỉ bỏ khi thực sự đọc được bộ hiện tại từ cột.
+        var previous = applications.GetAiQuestionHistory(appId, skip: current is null ? 0 : 1);
+
+        return new InterviewPrepState(current, previous, BlockedReason(row));
     }
 
-    public InterviewQuestionSet? Get(int appId, int candidateUserId) => GetState(appId, candidateUserId)?.Questions;
-
+    // KHÔNG đi qua GetState: câu trả lời là một chuỗi, không cần tới lịch sử. GenerateAsync
+    // gọi hàm này trước mỗi lần tạo, nên nối nó vào GetState là bắt mỗi lần bấm "Tạo bộ câu
+    // hỏi mới" phải tải về toàn bộ các bộ cũ rồi vứt đi.
     public string? WhyNot(int appId, int candidateUserId) =>
-        GetState(appId, candidateUserId) is { } state ? state.BlockedReason : NotFound;
+        ReadRow(appId, candidateUserId) is { } row ? BlockedReason(row) : NotFound;
 
-    private string? BlockedReason(string status, bool consented, DateTime? lastGeneratedAt)
+    /// <summary>Hàng đơn mà cả hai đường đều cần. Chủ đơn lọc ngay trong SQL: đơn của người
+    /// khác trả null y hệt đơn không tồn tại.</summary>
+    private Row? ReadRow(int appId, int candidateUserId) =>
+        db.Applications.AsNoTracking()
+            .Where(x => x.Id == appId && x.CandidateProfile!.UserId == candidateUserId)
+            .Select(x => new Row(x.Status, x.CandidateProfile!.AiConsentAt != null,
+                                 x.AiQuestionsAt, x.AiQuestions, x.AiQuestionsSource))
+            .FirstOrDefault();
+
+    private sealed record Row(string Status, bool Consented, DateTime? AiQuestionsAt, string? Questions, string? Source);
+
+    private string? BlockedReason(Row row)
     {
-        if (status != ApplicationStatus.Interview)
+        if (row.Status != ApplicationStatus.Interview)
             return "Bộ câu hỏi luyện tập mở khi bạn được mời phỏng vấn.";
         // Bộ câu hỏi soạn từ nội dung CV gửi tới dịch vụ AI — cùng luật đồng ý với chấm điểm.
-        if (!consented) return AiConsentGate.BlockedForStudent;
+        if (!row.Consented) return AiConsentGate.BlockedForStudent;
 
-        if (lastGeneratedAt is DateTime last)
+        if (row.AiQuestionsAt is DateTime last)
         {
             var nextAllowed = last.AddHours(RegenerateCooldownHours);
             if (VietnamDateHelper.UtcNow(clock) < nextAllowed)
@@ -97,6 +114,9 @@ public class InterviewPrepService(
 
         // Lần gọi mô hình nằm NGOÀI mọi giao dịch CSDL, giống SelfCheckService.
         var set = await ai.GenerateQuestionsAsync(await inputBuilder.ForApplicationAsync(a, a.CandidateProfile, ct), ct);
+
+        // Hỏi CHÍNH lần ghi xem nó có ghi được không. Đọc lại bộ câu hỏi để kết luận sẽ thấy
+        // bộ CŨ còn nguyên đó và báo "đã tạo xong" cho một lần tạo chẳng lưu được gì.
         return applications.SaveAiQuestions(appId, set)
             ? (true, "Đã tạo bộ câu hỏi luyện phỏng vấn.")
             : (false, "Không tạo được bộ câu hỏi, vui lòng thử lại sau.");

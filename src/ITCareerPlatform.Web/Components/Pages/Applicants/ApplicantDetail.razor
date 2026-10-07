@@ -267,6 +267,8 @@ else
         // Hai luật hỏi qua service — cùng những hàm mà các endpoint dùng, thay vì viết lại
         // vị ngữ trong @code và để nó lệch dần khỏi bản của server.
         // XEM: chủ tin hoặc Admin. THAO TÁC: chỉ Mentor chủ tin — Admin chỉ giám sát.
+        // Vai trò do service đọc từ CSDL, KHÔNG truyền CurrentUser.IsAdmin(user) vào: claim
+        // đó nằm trong cookie sống tới 8 tiếng, còn hàng ở CSDL là thứ đang đúng lúc này.
         var rights = Applications.GetRights(AppId, CurrentUser.Id(user));
         canAccess = rights.CanView;
         if (!canAccess) return;

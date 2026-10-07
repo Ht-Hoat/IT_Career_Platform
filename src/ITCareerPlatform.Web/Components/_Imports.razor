@@ -3,7 +3,9 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
-@* <AntiforgeryToken /> trong mọi form POST: framework tự sinh ô token và cookie đối chiếu. *@
+@* <AntiforgeryToken /> trong mọi form POST: framework tự sinh ô token và cookie đối
+   chiếu, và báo lỗi rõ ràng khi không có HttpContext thay vì lặng lẽ không render gì.
+   Dòng using này cũng mang theo EditForm/InputText/ValidationMessage cho cả dự án. *@
 @using Microsoft.AspNetCore.Components.Forms
 @using ITCareerPlatform
 @using ITCareerPlatform.Components

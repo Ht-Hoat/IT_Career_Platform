@@ -4,24 +4,38 @@
 
 @* EXT-01: Sinh viên IT đăng ký tài khoản *@
 
-<div class="login-wrap">
-    <div class="login-card">
-        <div class="brand-lg">IT Career<span>PLATFORM</span></div>
-        <h1>Đăng ký — Sinh viên IT</h1>
-        @if (!string.IsNullOrEmpty(ErrorMsg)) { <div class="alert-err">@ErrorMsg</div> }
-        <form method="post" action="/account/register" data-vi-validate>
-            <AntiforgeryToken />
-            <label>Họ và tên</label>
-            <input name="fullName" required minlength="2" placeholder="Nguyễn Văn A" />
-            <label>Email</label>
-            <input name="email" type="email" required placeholder="ban@example.com" />
-            <label>Mật khẩu (tối thiểu 8 ký tự)</label>
-            <input name="password" type="password" required minlength="8" placeholder="••••••••" />
-            <label>Xác nhận mật khẩu</label>
-            <input name="confirmPassword" type="password" required minlength="8" placeholder="••••••••" />
-            <button class="btn-primary full" type="submit">Đăng ký tài khoản Sinh viên IT</button>
-        </form>
-        <div class="hint">Đã có tài khoản? <a href="/login">Đăng nhập ngay</a></div>
+<div class="login-split-container">
+    <div class="login-split-banner">
+        <img class="login-split-img" src="https://www.vietnamworks.com/hrinsider/wp-content/uploads/2022/10/nghe-it-4.jpg" alt="IT Career Platform Banner" />
+        <div class="login-split-overlay"></div>
+        <div class="login-split-text">
+            <span class="login-split-tag">DÀNH CHO SINH VIÊN IT</span>
+            <h2>Khởi đầu sự nghiệp IT & Bứt phá tiềm năng</h2>
+            <p>Xây dựng hồ sơ IT chuẩn mực, đánh giá độ phù hợp CV bằng AI, luyện tập câu hỏi phỏng vấn và tiếp cận hàng trăm cơ hội thực tập, việc làm hấp dẫn.</p>
+        </div>
+    </div>
+    <div class="login-split-form-wrap">
+        <div class="login-card" style="max-width: 480px;">
+            <div class="brand-lg">IT Career<span>PLATFORM</span></div>
+            <h1>Đăng ký — Sinh viên IT</h1>
+            @if (!string.IsNullOrEmpty(ErrorMsg)) { <div class="alert-err">@ErrorMsg</div> }
+            <form method="post" action="/account/register" data-vi-validate>
+                <AntiforgeryToken />
+                <label>Họ và tên</label>
+                <input name="fullName" required minlength="2" placeholder="Nguyễn Văn A" />
+                <label>Email sinh viên</label>
+                <input name="email" type="email" required placeholder="ban@example.com" />
+                <label>Mật khẩu (tối thiểu 8 ký tự)</label>
+                <input name="password" type="password" required minlength="8" placeholder="••••••••" />
+                <label>Xác nhận mật khẩu</label>
+                <input name="confirmPassword" type="password" required minlength="8" placeholder="••••••••" />
+                <button class="btn-primary full" type="submit" style="margin-top: 14px;">Đăng ký tài khoản Sinh viên IT</button>
+            </form>
+            <div class="hint">
+                <div>Đã có tài khoản? <a href="/login">Đăng nhập ngay</a></div>
+                <div style="margin-top:6px">Bạn là nhà tuyển dụng? <a href="/register-hr">Đăng ký HR / Mentor</a></div>
+            </div>
+        </div>
     </div>
 </div>
 

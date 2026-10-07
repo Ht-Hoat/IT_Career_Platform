@@ -130,8 +130,6 @@
         // Trang render tĩnh nên form sửa nhận dữ liệu qua ?edit=, không qua trạng thái nội bộ.
         if (Edit is > 0) editing = companies.FirstOrDefault(c => c.Id == Edit);
 
-        posters = Users.GetAll()
-                       .Where(u => u.RoleId != Roles.StudentId)
-                       .ToList();
+        posters = Users.GetJobPosters();
     }
 }

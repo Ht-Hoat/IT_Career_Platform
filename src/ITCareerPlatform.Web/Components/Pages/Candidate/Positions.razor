@@ -83,7 +83,6 @@ else if (!hasCv)
 <div class="job-grid">
     @foreach (var j in jobs)
     {
-        var daysLeft = (j.Deadline.Date - VietnamDateHelper.Today()).Days;
         <div class="job-card">
             <div class="job-card-head">
                 <span class="@Ui.CategoryClass(j.Category)">@j.Category</span>
@@ -109,7 +108,7 @@ else if (!hasCv)
             <div class="job-meta">
                 <span>📍 @j.Location</span>
                 <span>💰 @Ui.SalaryText(j.SalaryMin, j.SalaryMax)</span>
-                <span class="@(daysLeft <= 7 ? "deadline-hot" : "")">⏰ @Ui.DateText(j.Deadline)@(daysLeft <= 7 ? $" (còn {daysLeft} ngày)" : "")</span>
+                <span class="@(Ui.DeadlineIsHot(j.Deadline) ? "deadline-hot" : "")">⏰ @Ui.DateText(j.Deadline)@Ui.DeadlineNote(j.Deadline)</span>
                 <span>👥 @counts.GetValueOrDefault(j.Id) ứng viên</span>
             </div>
             <div class="job-card-foot">

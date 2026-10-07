@@ -54,13 +54,32 @@
 </div>
 
 @* Một đối tượng JSON duy nhất. Trước đây có 9 chuỗi rời phải tự khớp nhau theo thứ tự
-   và tên được gõ lại trong chuỗi nội suy — không gì đảm bảo nhãn và số liệu cùng độ dài. *@
-@((MarkupString)$"<script>window.__dash={chartJson};</script>")
+   và tên được gõ lại trong chuỗi nội suy — không gì đảm bảo nhãn và số liệu cùng độ dài.
+
+   JSON đi qua một THUỘC TÍNH, không phải MarkupString nhúng thẳng vào <script>. Nhãn biểu đồ
+   lấy từ Job.Category do người dùng nhập, nên nếu nhúng thô thì một tiêu đề chứa "</script>"
+   sẽ cắt ngang khối script và chạy được mã tùy ý. Hiện tại JsonSerializer mặc định escape "<"
+   thành < nên vẫn an toàn — nhưng đó là một MẶC ĐỊNH chứ không phải một rào chắn: chỉ
+   cần ai đó thêm JavaScriptEncoder.UnsafeRelaxedJsonEscaping (cách vẫn được dùng để tiếng Việt
+   không bị escape) là lỗ hổng mở ngay, mà không có gì ở đây báo. Razor escape thuộc tính, và
+   trình duyệt tự giải mã lại khi đọc dataset — an toàn bất kể tùy chọn encoder. *@
+<div id="dash-data" data-json="@chartJson" hidden></div>
 
 <script>
     (function () {
         var maxRetries = 20;
         var retryCount = 0;
+
+        // Đọc JSON từ thuộc tính data-json. Trả null nếu chưa có hoặc hỏng, để vòng retry và
+        // các thông báo lỗi bên dưới xử lý y như trước.
+        var dashCache = null;
+        function readDash() {
+            if (dashCache) return dashCache;
+            var el = document.getElementById('dash-data');
+            if (!el || !el.dataset.json) return null;
+            try { dashCache = JSON.parse(el.dataset.json); } catch (e) { return null; }
+            return dashCache;
+        }
 
         function isValidNumericData(arr) {
             if (!arr || !Array.isArray(arr) || arr.length === 0) return false;
@@ -129,7 +148,7 @@
                 return; // Dừng ngay, không retry khi Chart.js không tồn tại
             }
 
-            if (!window.__dash) {
+            if (!readDash()) {
                 retryCount++;
                 if (retryCount >= maxRetries) {
                     // Dừng retry sau 20 lần (~3 giây)
@@ -147,7 +166,7 @@
                 return setTimeout(draw, 150);
             }
 
-            var d = window.__dash;
+            var d = readDash();
 
             tryDrawChart('catChart', 'catChartError', function () {
                 return {

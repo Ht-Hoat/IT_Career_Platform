@@ -5,14 +5,17 @@
 
 @* ATS-11: DS ứng viên · ATS-15: xếp hạng + phân màu theo % phù hợp · N1.F: bộ lọc pipeline *@
 
-@if (job is null)
-{
-    <p class="sub">Không tìm thấy tin tuyển dụng.</p>
-}
-else if (!canAccess)
+@* Quyền xét TRƯỚC sự tồn tại, cùng thứ tự với ApplicantDetail: tin của người khác và tin
+   không tồn tại đều rơi vào nhánh đầu, nên URL này không xác nhận id nào có thật. *@
+@if (!canAccess)
 {
     <div class="alert-err">Bạn không có quyền xem ứng viên của tin này (chỉ người tạo tin hoặc Admin).</div>
     <a class="btn" href="/jobs">← Về danh sách tin</a>
+}
+else if (job is null)
+{
+    @* Chỉ xảy ra nếu tin bị xóa giữa hai truy vấn — giữ lại để trang không nổ NullReference. *@
+    <p class="sub">Không tìm thấy tin tuyển dụng.</p>
 }
 else
 {
@@ -271,23 +274,29 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        job = Jobs.GetById(JobId);
-        if (job is null || AuthState is null) return;
+        if (AuthState is null) return;
 
-        // #5: hai luật hỏi qua service, không viết lại tại chỗ. XEM: chủ tin hoặc Admin;
-        // THAO TÁC: chỉ Mentor chủ tin — Admin giám sát chứ không xử lý ứng viên.
+        // Kiểm quyền TRƯỚC khi đọc tin: đọc rồi mới kiểm thì dữ liệu đã nằm trong bộ nhớ của
+        // trang, và chỉ còn markup ngăn nó hiện ra — một lần sửa markup vô ý là một lần rò.
+        // XEM: chủ tin hoặc Admin; THAO TÁC: chỉ Mentor chủ tin (Admin giám sát, không xử lý).
+        // Hai quyền lấy trong MỘT truy vấn.
         var uid = CurrentUser.Id((await AuthState).User);
         var rights = Jobs.GetRights(JobId, uid);
         canAccess = rights.CanView;
         if (!canAccess) return;
         canModify = rights.CanModify;
 
+        job = Jobs.GetById(JobId);
+        if (job is null) return;
+
         // Ô tick công nghệ dựng từ chính Tech Stack của tin này, nên Mentor chỉ lọc được
         // theo thứ mà vị trí thực sự yêu cầu.
         jobTech = job.TechStackList;
 
         // P2-1: dựng bộ lọc bằng CÙNG một hàm mà endpoint xuất CSV dùng, để tệp tải về
-        // luôn chứa đúng tập đang hiện trên màn hình. Ô tick đọc lại từ chính bộ lọc đó.
+        // luôn chứa đúng tập đang hiện trên màn hình. Ô tick đọc lại từ chính bộ lọc đó —
+        // lọc lại FTech theo jobTech ở đây là bản chép tay thứ hai của luật trong FromQuery,
+        // và ô tick sẽ lệch khỏi tập đang được lọc ngay lần luật đó đổi.
         filter = ApplicantFilter.FromQuery(FStatus, FCv, FLevel, FTech, jobTech);
         selectedTech = filter.RequiredTech?.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new();
 

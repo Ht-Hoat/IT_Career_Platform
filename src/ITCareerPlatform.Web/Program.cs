@@ -22,17 +22,6 @@ const string LoginRateLimitPolicy = "login";
 // rẻ hơn một claim trong cookie (claim có thể cũ tới 8 tiếng) và không tốn thêm lần đọc nào.
 const string MustChangePasswordItem = "itcp:mustchangepw";
 
-// P2-3: hai đường POST được miễn kiểm tra chống giả mạo (CSRF): /account/login và
-// /account/register, đánh dấu bằng .DisableAntiforgery() ngay trên endpoint — middleware bên
-// dưới đọc chính metadata đó, nên chỉ có MỘT nơi khai báo miễn trừ.
-//
-// Lý do miễn trừ: cả hai chạy TRƯỚC khi có phiên, và một lần đối chiếu token hỏng ở đây —
-// cookie token hết hạn vì tab đăng nhập mở quá lâu, hoặc người dùng bấm Quay lại — sẽ chặn
-// hẳn đường vào hệ thống bằng một trang lỗi trắng. Hai đường này vốn đã được giới hạn tốc độ
-// theo IP, và một yêu cầu giả mạo tới chúng cũng chỉ làm nạn nhân đăng nhập vào MỘT tài
-// khoản khác chứ không thao tác được gì trên tài khoản của chính họ.
-// MỌI endpoint còn lại đều bị kiểm tra.
-
 // ---------- Blazor (server-rendered) + trạng thái đăng nhập ----------
 builder.Services.AddRazorComponents();
 builder.Services.AddCascadingAuthenticationState();
@@ -54,6 +43,9 @@ if (!builder.Environment.IsDevelopment() &&
         "ConnectionStrings:DefaultConnection vẫn đang trỏ localhost ở môi trường không phải Development. " +
         "Hãy đặt chuỗi kết nối thật qua biến môi trường ConnectionStrings__DefaultConnection.");
 
+// KHÔNG chặn PendingModelChangesWarning ở đây: cảnh báo đó là thứ duy nhất báo cho biết
+// model đã đổi mà chưa sinh migration, và tắt nó đi nghĩa là lần triển khai sau chạy trên
+// một CSDL thiếu cột mà không có dấu hiệu nào ở máy phát triển.
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString));
 
 // ---------- Xác thực Cookie + phân quyền theo Role ----------
@@ -160,14 +152,18 @@ if (smtpConfigured)
 else
     builder.Services.AddScoped<IEmailSender, NullEmailSender>();
 
-// Tiến trình nền quét hàng đợi email 30 giây một lần — chỉ khi gửi được. Chưa có SMTP thì nó
-// chỉ quét rồi ghi lại "chưa cấu hình" cho từng dòng mỗi 30 giây mà không gửi được gì; email vẫn
-// nằm trong EmailOutbox và được gửi sau khi cấu hình SMTP rồi khởi động lại.
+// Tiến trình nền quét hàng đợi email 30 giây một lần — CHỈ khi gửi được. Chưa có SMTP thì mỗi
+// lượt quét ghi lại dòng "chưa cấu hình" cho từng bản ghi đang chờ mà không gửi được gì, tức là
+// một vòng UPDATE 30 giây một lần, vĩnh viễn (OutboxSender hoàn lại lượt thử nên bản ghi không
+// bao giờ rụng khỏi hàng đợi). Email vẫn nằm trong EmailOutbox và được gửi sau khi cấu hình
+// SMTP rồi khởi động lại.
 if (smtpConfigured)
     builder.Services.AddHostedService<OutboxSender>();
 
 var app = builder.Build();
 
+// Cảnh báo này là DẤU HIỆU DUY NHẤT cho người vận hành biết email đang không đi đâu cả —
+// không có nó, hàng đợi lặng lẽ dài ra mà không ai biết.
 if (!smtpConfigured)
     app.Logger.LogWarning(
         "Chưa cấu hình SMTP (Smtp:Host, Smtp:From): email mời phỏng vấn / trúng tuyển / từ chối " +
@@ -270,6 +266,16 @@ app.UseAntiforgery();
 // /applications/{id}/status hay /jobs/{id}/close.
 app.Use(async (ctx, next) =>
 {
+    // Miễn trừ đọc từ METADATA của endpoint, tức là từ chính .DisableAntiforgery() đặt ở
+    // chỗ khai báo route — MỘT nguồn sự thật. Một mảng đường dẫn chép tay là nguồn thứ hai:
+    // thêm endpoint miễn trừ mà quên mảng thì lỗi chỉ hiện khi token hết hạn, còn đổi tên
+    // route mà quên mảng thì một endpoint POST lặng lẽ mất bảo vệ. So chuỗi cũng nhạy với
+    // chuẩn hóa — routing khớp "POST /account/login/" nhưng chuỗi thì không.
+    //
+    // Ba đường được miễn (đăng nhập, đăng ký, đăng ký HR) đều chạy TRƯỚC khi có phiên: một
+    // lần đối chiếu token hỏng ở đó — tab mở quá lâu, hoặc bấm Quay lại — sẽ chặn hẳn đường
+    // vào hệ thống. Chúng đã bị giới hạn tốc độ theo IP, và một yêu cầu giả mạo tới chúng
+    // cũng chỉ làm nạn nhân đăng nhập vào MỘT tài khoản khác.
     if (HttpMethods.IsPost(ctx.Request.Method) &&
         ctx.GetEndpoint()?.Metadata.GetMetadata<Microsoft.AspNetCore.Antiforgery.IAntiforgeryMetadata>() is not { RequiresValidation: false })
     {
@@ -302,13 +308,10 @@ app.Use(async (ctx, next) =>
 {
     if (ctx.Items.TryGetValue(MustChangePasswordItem, out var flag) && flag is true)
     {
-        var path = ctx.Request.Path;
-        // Đúng ba đường được đi: trang đổi mật khẩu, endpoint xử lý nó, và đăng xuất.
-        // Thiếu đường đăng xuất thì người dùng bị kẹt hẳn nếu không nhớ mật khẩu tạm.
-        var allowed = path.StartsWithSegments("/change-password")
-                      || path.StartsWithSegments("/account/change-password")
-                      || path.StartsWithSegments("/account/logout");
-        if (!allowed)
+        // Đường ĐI ĐƯỢC đọc từ metadata của chính route ([AllowWithExpiredPassword]), không
+        // từ một mảng đường dẫn chép tay ở đây — cùng lý do đã ghi ở phần chống giả mạo:
+        // một nguồn sự thật, không lệch khi đổi tên route, không khớp nhầm theo tiền tố.
+        if (ctx.GetEndpoint()?.Metadata.GetMetadata<AllowWithExpiredPasswordAttribute>() is null)
         {
             ctx.Response.Redirect("/change-password?forced=1");
             return;
@@ -369,7 +372,8 @@ app.MapPost("/account/logout", async (HttpContext ctx) =>
 {
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.LocalRedirect("/login");
-});
+    // Thiếu đường đăng xuất thì người vừa bị reset mật khẩu mà không nhớ mật khẩu tạm sẽ kẹt hẳn.
+}).WithMetadata(new AllowWithExpiredPasswordAttribute());
 
 app.MapPost("/account/register", async (HttpContext ctx, IUserService svc) =>
 {
@@ -379,6 +383,21 @@ app.MapPost("/account/register", async (HttpContext ctx, IUserService svc) =>
     if (!svc.Register(f["fullName"].ToString(), f["email"].ToString(), f["password"].ToString(), out var error))
         return Results.Redirect("/register?error=" + Enc(error));
     return Results.LocalRedirect("/login?registered=1");
+}).AllowAnonymous().DisableAntiforgery().RequireRateLimiting(LoginRateLimitPolicy);
+
+// HR-REG: HR/Mentor tự đăng ký ngoài. Tài khoản tạo ra CHỜ ADMIN DUYỆT (chưa đăng nhập được).
+// Nền tảng cần HR tự lên tài khoản để tuyển dụng, nhưng phải qua kiểm duyệt để tránh tài
+// khoản giả mạo — nên khác hẳn đường Sinh viên tự đăng ký (kích hoạt ngay).
+app.MapPost("/account/register-hr", async (HttpContext ctx, IUserService svc) =>
+{
+    var f = await ctx.Request.ReadFormAsync();
+    if (f["password"].ToString() != f["confirmPassword"].ToString())
+        return Results.Redirect("/register-hr?error=" + Enc("Mật khẩu xác nhận không khớp."));
+    if (!svc.RegisterHr(f["fullName"].ToString(), f["email"].ToString(), f["password"].ToString(),
+                        f["companyName"].ToString(), out var error))
+        return Results.Redirect("/register-hr?error=" + Enc(error));
+    // Chưa kích hoạt: đưa về trang đăng nhập kèm thông báo đang chờ duyệt.
+    return Results.LocalRedirect("/login?hrpending=1");
 }).AllowAnonymous().DisableAntiforgery().RequireRateLimiting(LoginRateLimitPolicy);
 
 // N1.A: người dùng tự đổi mật khẩu — mọi vai trò, không riêng Admin.
@@ -402,7 +421,8 @@ app.MapPost("/account/change-password", async (HttpContext ctx, IUserService svc
     return Results.LocalRedirect("/login?pwchanged=1");
     // Cùng chính sách giới hạn tốc độ với đăng nhập: endpoint này cũng nhận mật khẩu hiện
     // tại, nên nếu không chặn thì nó thành một cửa dò mật khẩu thứ hai.
-}).RequireAuthorization().RequireRateLimiting(LoginRateLimitPolicy);
+}).RequireAuthorization().RequireRateLimiting(LoginRateLimitPolicy)
+  .WithMetadata(new AllowWithExpiredPasswordAttribute());
 
 // ============================ USERS (ATS-01, ATS-02) ============================
 app.MapPost("/users/create", async (HttpContext ctx, IUserService svc) =>
@@ -464,10 +484,23 @@ app.MapPost("/users/{id:int}/change-role", async (int id, HttpContext ctx, IUser
 app.MapPost("/users/{id:int}/reset-password", async (int id, HttpContext ctx, IUserService svc, IEmailSender email,
     Microsoft.AspNetCore.DataProtection.IDataProtectionProvider dp) =>
 {
-    if (!svc.ResetPassword(id, CurrentUserId(ctx), out var tempPassword, out var error))
+    // RESET+: ô "newPassword" (tùy chọn) cho Admin gõ mật khẩu tay; bỏ trống thì hệ thống tự sinh mạnh.
+    var f = await ctx.Request.ReadFormAsync();
+    var manualPw = f["newPassword"].ToString();
+    if (!svc.ResetPassword(id, CurrentUserId(ctx), out var tempPassword, out var error, manualPassword: manualPw))
         return Results.Redirect("/users?err=" + Enc(error));
 
     var target = svc.GetById(id);
+    var isManual = !string.IsNullOrWhiteSpace(manualPw);
+    var adminId = CurrentUserId(ctx);
+
+    // MỌI nhánh dưới đây đều chuyển hướng về đúng một chỗ và mô tả kết cục ở đúng một nơi
+    // (cookie one-shot). Trước đây mỗi nhánh gắn thêm một cờ boolean lên URL, và trang /users
+    // phải tự đoán ra kết cục từ tổ hợp của chúng.
+    void Remember(ResetDelivery delivery, string? password) =>
+        TempPasswordHandoff.Store(ctx, dp, adminId,
+            new ResetHandoff(delivery, isManual, target?.Email ?? "", password));
+
     if (email.IsConfigured && target is not null)
     {
         try
@@ -489,22 +522,70 @@ app.MapPost("/users/{id:int}/reset-password", async (int id, HttpContext ctx, IU
                     "IT Career Platform"
                 })), ctx.RequestAborted);
 
-            return Results.Redirect("/users?msg=" + Enc(
-                $"Đã gửi mật khẩu tạm tới {target.Email}. Người dùng phải đổi mật khẩu ngay khi đăng nhập."));
+            // Đã gửi được thì KHÔNG cất mật khẩu vào cookie: Admin không cần nhìn thấy nó nữa.
+            Remember(ResetDelivery.Emailed, null);
+            return Results.Redirect("/users?tempPw=1");
         }
         catch (Exception ex)
         {
             // Gửi hỏng KHÔNG được làm hỏng việc đặt lại mật khẩu — mật khẩu đã đổi rồi. Lùi
             // về hiện trên màn hình, nếu không thì tài khoản đó không ai vào được nữa.
             SafeError(ctx, ex, $"gửi mật khẩu tạm cho tài khoản #{id}");
-            TempPasswordHandoff.Store(ctx, dp, CurrentUserId(ctx), tempPassword);
-            return Results.Redirect("/users?tempPw=1&mailfailed=1");
+            Remember(ResetDelivery.ShownAfterMailFailure, tempPassword);
+            return Results.Redirect("/users?tempPw=1");
         }
     }
 
-    TempPasswordHandoff.Store(ctx, dp, CurrentUserId(ctx), tempPassword);
+    Remember(ResetDelivery.Shown, tempPassword);
     return Results.Redirect("/users?tempPw=1");
 }).RequireAuthorization(p => p.RequireRole(Roles.Admin));
+
+// HR-REG: Admin duyệt tài khoản HR đang chờ. Gửi email báo cho HR nếu đã cấu hình SMTP.
+app.MapPost("/users/{id:int}/approve", async (int id, HttpContext ctx, IUserService svc, IEmailSender email) =>
+{
+    if (!svc.ApproveUser(id, CurrentUserId(ctx), out var error))
+        return Results.Redirect("/users/pending?err=" + Enc(error));
+
+    var target = svc.GetById(id);
+    if (email.IsConfigured && target is not null)
+    {
+        try
+        {
+            await email.SendAsync(new EmailMessage(
+                target.Email,
+                "Tài khoản HR đã được duyệt — IT Career Platform",
+                string.Join(Environment.NewLine, new[]
+                {
+                    $"Xin chào {target.FullName},",
+                    "",
+                    "Tài khoản Nhà tuyển dụng (HR/Mentor) của bạn đã được quản trị viên duyệt.",
+                    "Bạn có thể đăng nhập ngay và bắt đầu đăng tin tuyển dụng.",
+                    "",
+                    "Trân trọng,",
+                    "IT Career Platform"
+                })), ctx.RequestAborted);
+        }
+        catch (Exception ex) { SafeError(ctx, ex, $"gửi email duyệt tài khoản #{id}"); }
+    }
+    // Về lại hàng chờ, không phải /users: Admin thường duyệt nhiều tài khoản liên tiếp, và
+    // /users còn bật hộp thoại kết quả của luồng đặt lại mật khẩu — một modal chặn ngang
+    // trang, nội dung chẳng liên quan gì tới việc vừa duyệt.
+    return Results.Redirect("/users/pending?msg=" + Enc("Đã duyệt tài khoản HR."));
+}).RequireAuthorization(p => p.RequireRole(Roles.Admin));
+
+// HR-REG: Admin từ chối tài khoản HR đang chờ (xóa hồ sơ).
+app.MapPost("/users/{id:int}/reject", (int id, HttpContext ctx, IUserService svc) =>
+{
+    if (!svc.RejectUser(id, CurrentUserId(ctx), out var error))
+        return Results.Redirect("/users/pending?err=" + Enc(error));
+    return Results.Redirect("/users/pending?msg=" + Enc("Đã từ chối tài khoản HR chờ duyệt."));
+}).RequireAuthorization(p => p.RequireRole(Roles.Admin));
+
+// RESET+: gợi ý một mật khẩu mạnh cho Admin xem trước khi đặt lại (chưa áp vào tài khoản nào).
+// Trả JSON để giao diện điền sẵn vào ô "mật khẩu tay". Chỉ Admin gọi được, chạy trên HTTPS.
+app.MapGet("/users/suggest-password", (IUserService svc) =>
+    Results.Json(new { password = svc.SuggestStrongPassword() })
+).RequireAuthorization(p => p.RequireRole(Roles.Admin));
 
 // ============================ COMPANIES (P1-1) ============================
 // Hai endpoint này từng bị xóa nhầm khi sửa khối reset-password ở P1-3, làm trang /companies

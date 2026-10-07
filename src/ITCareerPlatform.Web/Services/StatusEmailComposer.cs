@@ -12,6 +12,11 @@ namespace ITCareerPlatform.Services;
 /// do chốt điểm (HrNote) hay ghi chú nội bộ của Mentor (InternalNote). Email đi ra khỏi hệ
 /// thống và có thể được chuyển tiếp cho bất kỳ ai. Chỉ CandidateFeedback — thứ nhà tuyển
 /// dụng cố ý viết CHO ứng viên đọc (P1-4) — mới được đi kèm.
+///
+/// Mọi trường đều được CẮT theo giới hạn cột trước khi trả về: tiêu đề dựng từ tiêu đề tin
+/// cộng tên công ty (160 + 160 ký tự) nên vượt nvarchar(300) là chuyện đến lúc nào đó sẽ xảy
+/// ra, và bản ghi này được Add trong CÙNG transaction với lần đổi trạng thái — một lần ghi
+/// hỏng ở đây làm nhà tuyển dụng KHÔNG đổi được trạng thái đơn, chứ không phải chỉ mất email.
 /// </summary>
 public static class StatusEmailComposer
 {
@@ -33,7 +38,7 @@ public static class StatusEmailComposer
         {
             // Đổi lịch cũng gửi (statusChanged = false): ứng viên phải biết giờ mới, nếu không
             // họ đến vào giờ cũ. Không có lịch thì không có gì để mời.
-            ApplicationStatus.Interview when a.InterviewAt.HasValue => new EmailOutbox
+            ApplicationStatus.Interview when a.InterviewAt.HasValue => Fit(new EmailOutbox
             {
                 ToEmail = to,
                 Subject = statusChanged ? $"Lời mời phỏng vấn: {at}" : $"Cập nhật lịch phỏng vấn: {at}",
@@ -41,9 +46,9 @@ public static class StatusEmailComposer
                 AttachmentName = "phong-van.ics",
                 AttachmentContent = IcsBuilder.BuildInvite(
                     a.Id, a.InterviewSequence, a.InterviewAt.Value, title, a.InterviewLink, a.InterviewNote)
-            },
+            }),
 
-            ApplicationStatus.Accepted when statusChanged => new EmailOutbox
+            ApplicationStatus.Accepted when statusChanged => Fit(new EmailOutbox
             {
                 ToEmail = to,
                 Subject = $"Chúc mừng! Bạn đã trúng tuyển: {at}",
@@ -56,17 +61,29 @@ public static class StatusEmailComposer
                     "",
                     Signature
                 })
-            },
+            }),
 
-            ApplicationStatus.Rejected when statusChanged => new EmailOutbox
+            ApplicationStatus.Rejected when statusChanged => Fit(new EmailOutbox
             {
                 ToEmail = to,
                 Subject = $"Kết quả ứng tuyển: {at}",
                 Body = RejectionBody(a, name, at)
-            },
+            }),
 
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Cắt ba trường chữ theo đúng giới hạn cột. Một chỗ duy nhất, chạy trên MỌI nhánh soạn
+    /// email — thêm nhánh mới mà quên cắt là không thể, vì nhánh nào cũng phải đi qua đây.
+    /// </summary>
+    private static EmailOutbox Fit(EmailOutbox mail)
+    {
+        mail.ToEmail = TextLimits.Cut(mail.ToEmail, EmailOutbox.ToEmailLimit);
+        mail.Subject = TextLimits.Cut(mail.Subject, EmailOutbox.SubjectLimit);
+        mail.Body = TextLimits.Cut(mail.Body, EmailOutbox.BodyLimit);
+        return mail;
     }
 
     private static string InterviewBody(Application a, string name, string at, bool statusChanged)
